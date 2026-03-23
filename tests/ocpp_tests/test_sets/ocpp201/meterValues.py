@@ -50,6 +50,21 @@ async def test_J01_19(
     test_utility.messages.clear()
 
     test_controller.start()
+
+    # -- Allow "MeterValues" during J01.FR.19 (idle before transaction) --
+    fa = getattr(test_utility, "forbidden_actions", None)
+    if fa is not None:
+        if isinstance(fa, list):
+            if "MeterValues" in fa:
+                fa.remove("MeterValues")
+        else:
+            try:
+                fa.discard("MeterValues")
+            except AttributeError:
+                if "MeterValues" in fa:
+                    fa.remove("MeterValues")
+
+
     charge_point_v201 = await central_system_v201.wait_for_chargepoint(
         wait_for_bootnotification=True
     )
@@ -181,3 +196,15 @@ async def test_J01_19(
         test_utility, charge_point_v201, "TransactionEvent", {
             "eventType": "Ended"}
     )
+
+    # -- Forbid "MeterValues" authorization during J01.FR.19 --
+    fa = getattr(test_utility, "forbidden_actions", None)
+    if fa is not None and "MeterValues" not in fa:
+        if isinstance(fa, list):
+            fa.append("MeterValues")
+        else:
+            try:
+                fa.add("MeterValues")
+            except AttributeError:
+                if "MeterValues" not in fa:
+                    fa.append("MeterValues")
