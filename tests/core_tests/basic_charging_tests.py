@@ -393,8 +393,7 @@ async def test_basic_charging_cp_disconnect_reconnect(everest_core: EverestCore)
         "draw_power_regulated 16,3;"
         "sleep 5;"
         "unplug;"  # Disconnect CP
-        "sleep 2;"
-        "plug;"  # Reconnect CP
+        "sleep 3;"
         "iec_wait_pwr_ready;"  # Wait for power ready again
         "draw_power_regulated 16,3;"  # Resume charging
         "sleep 10;"
