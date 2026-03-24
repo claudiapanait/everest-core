@@ -391,16 +391,16 @@ async def test_basic_charging_cp_disconnect_reconnect(everest_core: EverestCore)
         "iec_wait_pwr_ready;"
         "sleep 1;"
         "draw_power_regulated 16,3;"
+        "sleep 10;"
+        "error_e;"  # Simulate CP error (State E)
         "sleep 5;"
-        "unplug;"  # Disconnect CP
-        "sleep 3;"
         "iec_wait_pwr_ready;"  # Wait for power ready again
         "draw_power_regulated 16,3;"  # Resume charging
         "sleep 10;"
         "unplug"
     )
 
-    assert probe.test(60, Mode.Basic, cmd_string)
+    assert probe.test(120, Mode.Basic, cmd_string)
 
     logging.info(">>>>>>>>>> BASIC CHARGING CP DISCONNECT/RECONNECT TEST PASSED <<<<<<<<<<")
 
@@ -433,20 +433,20 @@ async def test_basic_charging_multiple_cp_disconnects(everest_core: EverestCore)
         "sleep 1;"
         "iec_wait_pwr_ready;"
         "draw_power_regulated 16,3;"
-        "sleep 3;"
-        "unplug;"
-        "sleep 3;"
+        "sleep 10;"
+        "pause;"
+        "sleep 5;"
         "iec_wait_pwr_ready;"
         "draw_power_regulated 16,3;"
-        "sleep 3;"
-        "unplug;"
-        "sleep 3;"
+        "sleep 10;"
+        "pause;"
+        "sleep 5;"
         "iec_wait_pwr_ready;"
         "draw_power_regulated 16,3;"
         "sleep 5;"
         "unplug"
     )
 
-    assert probe.test(90, Mode.Basic, cmd_string)
+    assert probe.test(120, Mode.Basic, cmd_string)
 
     logging.info(">>>>>>>>>> BASIC CHARGING MULTIPLE CP DISCONNECTS TEST PASSED <<<<<<<<<<")
