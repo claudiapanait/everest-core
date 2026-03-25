@@ -62,6 +62,7 @@ class ProbeModule:
         self._energy_wh_import = 0
         self._ready_event = threading.Event()
         self._mod = m
+        self._all_events = []  # Track all events
 
         # Signal readiness once 'probe' finished its init path
         m.init_done(self._ready)
@@ -78,6 +79,7 @@ class ProbeModule:
         event = args["event"]
         logging.info(f"EVSE event received: {event}")
         self._msg_queue.put(event)
+        self._all_events.append(event)
 
         if 'transaction_finished' in args:
             energy = args['transaction_finished']['meter_value']['energy_Wh_import']['total']
@@ -471,17 +473,6 @@ async def test_basic_charging_diode_failure(everest_core: EverestCore):
     if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
         everest_core.all_modules_started_event.set()
 
-    # Track all events before test starts
-    all_events = []
-    original_handle = probe._handle_evse_manager_event
-
-    def tracking_handler(args):
-        event = args["event"]
-        all_events.append(event)
-        return original_handle(args)
-
-    probe._handle_evse_manager_event = tracking_handler
-
     cmd_string = (
         "sleep 1;"
         "iec_wait_pwr_ready;"
@@ -495,8 +486,8 @@ async def test_basic_charging_diode_failure(everest_core: EverestCore):
 
     assert probe.test(30, Mode.Basic, cmd_string)
 
-    logging.info(f"Events received: {all_events}")
-    assert 'ChargingResumed' in all_events, "ChargingResumed event missing after fault cleared"
+    logging.info(f"Events received: {probe._all_events}")
+    assert 'ChargingResumed' in probe._all_events, "ChargingResumed event missing after fault cleared"
 
     logging.info(">>>>>>>>>> BASIC CHARGING DIODE FAILURE TEST PASSED <<<<<<<<<<")
 
@@ -524,16 +515,6 @@ async def test_basic_charging_rcd_error(everest_core: EverestCore):
     if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
         everest_core.all_modules_started_event.set()
 
-    all_events = []
-    original_handle = probe._handle_evse_manager_event
-
-    def tracking_handler(args):
-        event = args["event"]
-        all_events.append(event)
-        return original_handle(args)
-
-    probe._handle_evse_manager_event = tracking_handler
-
     cmd_string = (
         "sleep 1;"
         "iec_wait_pwr_ready;"
@@ -547,11 +528,11 @@ async def test_basic_charging_rcd_error(everest_core: EverestCore):
 
     assert probe.test(30, Mode.Basic, cmd_string)
 
-    logging.info(f"Events received: {all_events}")
+    logging.info(f"Events received: {probe._all_events}")
 
-    assert 'ChargingPausedEV' in all_events, "ChargingPausedEV event missing (car should stop after RCD fault)"
+    assert 'ChargingPausedEV' in probe._all_events, "ChargingPausedEV event missing (car should stop after RCD fault)"
     # Verify ChargingResumed did NOT occur (RCD fault should prevent resume)
-    assert 'ChargingResumed' not in all_events, \
+    assert 'ChargingResumed' not in probe._all_events, \
         "ChargingResumed should NOT occur after RCD fault - this is a safety-critical error"
 
     logging.info(">>>>>>>>>> BASIC CHARGING RCD ERROR TEST PASSED <<<<<<<<<<")
