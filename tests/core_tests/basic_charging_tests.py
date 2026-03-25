@@ -471,6 +471,17 @@ async def test_basic_charging_diode_failure(everest_core: EverestCore):
     if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
         everest_core.all_modules_started_event.set()
 
+    # Track all events before test starts
+    all_events = []
+    original_handle = probe._handle_evse_manager_event
+
+    def tracking_handler(args):
+        event = args["event"]
+        all_events.append(event)
+        return original_handle(args)
+
+    probe._handle_evse_manager_event = tracking_handler
+
     cmd_string = (
         "sleep 1;"
         "iec_wait_pwr_ready;"
@@ -484,15 +495,8 @@ async def test_basic_charging_diode_failure(everest_core: EverestCore):
 
     assert probe.test(30, Mode.Basic, cmd_string)
 
-    # Verify that charging resumed after fault was cleared
-    events_received = []
-    while not probe._msg_queue.empty():
-        try:
-            events_received.append(probe._msg_queue.get_nowait())
-        except queue.Empty:
-            break
-
-    assert 'ChargingResumed' in events_received, "ChargingResumed event missing after fault cleared"
+    logging.info(f"Events received: {all_events}")
+    assert 'ChargingResumed' in all_events, "ChargingResumed event missing after fault cleared"
 
     logging.info(">>>>>>>>>> BASIC CHARGING DIODE FAILURE TEST PASSED <<<<<<<<<<")
 
@@ -520,6 +524,16 @@ async def test_basic_charging_rcd_error(everest_core: EverestCore):
     if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
         everest_core.all_modules_started_event.set()
 
+    all_events = []
+    original_handle = probe._handle_evse_manager_event
+
+    def tracking_handler(args):
+        event = args["event"]
+        all_events.append(event)
+        return original_handle(args)
+
+    probe._handle_evse_manager_event = tracking_handler
+
     cmd_string = (
         "sleep 1;"
         "iec_wait_pwr_ready;"
@@ -533,17 +547,11 @@ async def test_basic_charging_rcd_error(everest_core: EverestCore):
 
     assert probe.test(30, Mode.Basic, cmd_string)
 
-    # Collect all events
-    events_received = []
-    while not probe._msg_queue.empty():
-        try:
-            events_received.append(probe._msg_queue.get_nowait())
-        except queue.Empty:
-            break
+    logging.info(f"Events received: {all_events}")
 
-    assert 'ChargingPausedEV' in events_received, "ChargingPausedEV event missing (car should stop after RCD fault)"
+    assert 'ChargingPausedEV' in all_events, "ChargingPausedEV event missing (car should stop after RCD fault)"
     # Verify ChargingResumed did NOT occur (RCD fault should prevent resume)
-    assert 'ChargingResumed' not in events_received, \
+    assert 'ChargingResumed' not in all_events, \
         "ChargingResumed should NOT occur after RCD fault - this is a safety-critical error"
 
     logging.info(">>>>>>>>>> BASIC CHARGING RCD ERROR TEST PASSED <<<<<<<<<<")
