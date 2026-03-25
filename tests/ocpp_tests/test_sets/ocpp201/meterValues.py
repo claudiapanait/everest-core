@@ -49,21 +49,12 @@ async def test_J01_19(
     )
 
     log.info(
-        "##################### J01.FR.19: Allow MeterValues during J01.FR.19 (idle before transaction) #################"
+        "##################### Prior to continuing, waiting 0.8s #################"
     )
 
-    # -- Allow "MeterValues" during J01.FR.19 (idle before transaction) --
-    fa = getattr(test_utility, "forbidden_actions", None)
-    if fa is not None:
-        if isinstance(fa, list):
-            if "MeterValues" in fa:
-                fa.remove("MeterValues")
-        else:
-            try:
-                fa.discard("MeterValues")
-            except AttributeError:
-                if "MeterValues" in fa:
-                    fa.remove("MeterValues")
+    # --- Slow down token publication under LAVA (optimal value: 0.8s) ---
+    import asyncio
+    await asyncio.sleep(0.8)
 
     test_utility.messages.clear()
 
@@ -200,19 +191,3 @@ async def test_J01_19(
         test_utility, charge_point_v201, "TransactionEvent", {
             "eventType": "Ended"}
     )
-
-    log.info(
-        "##################### J01.FR.19: Forbid MeterValues during J01.FR.19  #################"
-    )
-
-    # -- Forbid "MeterValues" during J01.FR.19 --
-    fa = getattr(test_utility, "forbidden_actions", None)
-    if fa is not None and "MeterValues" not in fa:
-        if isinstance(fa, list):
-            fa.append("MeterValues")
-        else:
-            try:
-                fa.add("MeterValues")
-            except AttributeError:
-                if "MeterValues" not in fa:
-                    fa.append("MeterValues")
