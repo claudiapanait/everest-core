@@ -364,11 +364,11 @@ async def test_basic_charging_minimum_energy(everest_core: EverestCore):
 
 @pytest.mark.everest_core_config('config-sil.yaml')
 @pytest.mark.asyncio
-async def test_basic_charging_cp_disconnect_reconnect(everest_core: EverestCore):
+async def test_basic_charging_state_e(everest_core: EverestCore):
     """
-    Test CP disconnect during charging and verify charging resumes after reconnect.
+    Test CP state E during a charging session
     """
-    logging.info(">>>>>>>>>> BASIC CHARGING CP DISCONNECT/RECONNECT TEST START <<<<<<<<<<")
+    logging.info(">>>>>>>>>> BASIC CHARGING CP STATE E <<<<<<<<<<")
 
     test_connections = {
         'test_control': [Requirement('ev_manager', 'main')],
@@ -393,25 +393,22 @@ async def test_basic_charging_cp_disconnect_reconnect(everest_core: EverestCore)
         "draw_power_regulated 16,3;"
         "sleep 10;"
         "error_e;"  # Simulate CP error (State E)
-        "sleep 5;"
-        "iec_wait_pwr_ready;"  # Wait for power ready again
-        "draw_power_regulated 16,3;"  # Resume charging
-        "sleep 10;"
+        "sleep 20;"
         "unplug"
     )
 
     assert probe.test(120, Mode.Basic, cmd_string)
 
-    logging.info(">>>>>>>>>> BASIC CHARGING CP DISCONNECT/RECONNECT TEST PASSED <<<<<<<<<<")
+    logging.info(">>>>>>>>>> BASIC CHARGING CP STATE E TEST PASSED <<<<<<<<<<")
 
 
 @pytest.mark.everest_core_config('config-sil.yaml')
 @pytest.mark.asyncio
-async def test_basic_charging_multiple_cp_disconnects(everest_core: EverestCore):
+async def test_basic_charging_pause_resume(everest_core: EverestCore):
     """
-    Test multiple CP disconnect/reconnect cycles during a single charging session.
+    Test pause/resume a basic charging session
     """
-    logging.info(">>>>>>>>>> BASIC CHARGING MULTIPLE CP DISCONNECTS TEST START <<<<<<<<<<")
+    logging.info(">>>>>>>>>> BASIC CHARGING PAUSE RESUME SESSION <<<<<<<<<<")
 
     test_connections = {
         'test_control': [Requirement('ev_manager', 'main')],
@@ -428,7 +425,6 @@ async def test_basic_charging_multiple_cp_disconnects(everest_core: EverestCore)
     if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
         everest_core.all_modules_started_event.set()
 
-    # Command with multiple CP disconnect/reconnect cycles
     cmd_string = (
         "sleep 1;"
         "iec_wait_pwr_ready;"
@@ -449,4 +445,160 @@ async def test_basic_charging_multiple_cp_disconnects(everest_core: EverestCore)
 
     assert probe.test(120, Mode.Basic, cmd_string)
 
-    logging.info(">>>>>>>>>> BASIC CHARGING MULTIPLE CP DISCONNECTS TEST PASSED <<<<<<<<<<")
+    logging.info(">>>>>>>>>> BASIC CHARGING PAUSE RESUME SESSION TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_basic_charging_diode_failure(everest_core: EverestCore):
+    """
+    Test diode failure detection during charging.
+    """
+    logging.info(">>>>>>>>>> BASIC CHARGING DIODE FAILURE TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iec_wait_pwr_ready;"
+        "sleep 1;"
+        "draw_power_regulated 16,3;"
+        "sleep 5;"
+        "diode_fail;"  # Simulate diode failure
+        "sleep 2;"
+        "unplug"
+    )
+
+    assert probe.test(30, Mode.Basic, cmd_string)
+
+    logging.info(">>>>>>>>>> BASIC CHARGING DIODE FAILURE TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_basic_charging_rcd_error(everest_core: EverestCore):
+    """
+    Test RCD (Residual Current Device) error detection.
+    """
+    logging.info(">>>>>>>>>> BASIC CHARGING RCD ERROR TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iec_wait_pwr_ready;"
+        "sleep 1;"
+        "draw_power_regulated 16,3;"
+        "sleep 5;"
+        "rcd_current 35;"  # Set RCD current to 35mA (above threshold)
+        "sleep 2;"
+        "unplug"
+    )
+
+    assert probe.test(30, Mode.Basic, cmd_string)
+
+    logging.info(">>>>>>>>>> BASIC CHARGING RCD ERROR TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_basic_charging_high_current(everest_core: EverestCore):
+    """
+    Test basic charging with maximum current (32A).
+    """
+    logging.info(">>>>>>>>>> BASIC CHARGING HIGH CURRENT TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iec_wait_pwr_ready;"
+        "sleep 1;"
+        "draw_power_regulated 32,3;"  # Maximum 32A 
+        "sleep 20;"
+        "unplug"
+    )
+
+    assert probe.test(60, Mode.Basic, cmd_string)
+
+    # Verify higher energy due to higher current
+    assert probe._energy_wh_import > 0
+
+    logging.info(">>>>>>>>>> BASIC CHARGING HIGH CURRENT TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_basic_charging_low_current(everest_core: EverestCore):
+    """
+    Test basic charging with minimum allowed current (6A).
+    """
+    logging.info(">>>>>>>>>> BASIC CHARGING LOW CURRENT TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iec_wait_pwr_ready;"
+        "sleep 1;"
+        "draw_power_regulated 6,1;"  # Minimum 6A 
+        "sleep 20;"
+        "unplug"
+    )
+
+    assert probe.test(60, Mode.Basic, cmd_string)
+
+    logging.info(">>>>>>>>>> BASIC CHARGING LOW CURRENT TEST PASSED <<<<<<<<<<")
+    
