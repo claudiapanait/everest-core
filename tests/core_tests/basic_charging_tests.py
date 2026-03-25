@@ -478,11 +478,21 @@ async def test_basic_charging_diode_failure(everest_core: EverestCore):
         "draw_power_regulated 16,3;"
         "sleep 5;"
         "diode_fail;"  # Simulate diode failure
-        "sleep 2;"
+        "sleep 10;"
         "unplug"
     )
 
     assert probe.test(30, Mode.Basic, cmd_string)
+
+    # Verify that charging resumed after fault was cleared
+    events_received = []
+    while not probe._msg_queue.empty():
+        try:
+            events_received.append(probe._msg_queue.get_nowait())
+        except queue.Empty:
+            break
+
+    assert 'ChargingResumed' in events_received, "ChargingResumed event missing after fault cleared"
 
     logging.info(">>>>>>>>>> BASIC CHARGING DIODE FAILURE TEST PASSED <<<<<<<<<<")
 
@@ -522,6 +532,19 @@ async def test_basic_charging_rcd_error(everest_core: EverestCore):
     )
 
     assert probe.test(30, Mode.Basic, cmd_string)
+
+    # Collect all events
+    events_received = []
+    while not probe._msg_queue.empty():
+        try:
+            events_received.append(probe._msg_queue.get_nowait())
+        except queue.Empty:
+            break
+
+    assert 'ChargingPausedEV' in events_received, "ChargingPausedEV event missing (car should stop after RCD fault)"
+    # Verify ChargingResumed did NOT occur (RCD fault should prevent resume)
+    assert 'ChargingResumed' not in events_received, \
+        "ChargingResumed should NOT occur after RCD fault - this is a safety-critical error"
 
     logging.info(">>>>>>>>>> BASIC CHARGING RCD ERROR TEST PASSED <<<<<<<<<<")
 
@@ -601,4 +624,3 @@ async def test_basic_charging_low_current(everest_core: EverestCore):
     assert probe.test(60, Mode.Basic, cmd_string)
 
     logging.info(">>>>>>>>>> BASIC CHARGING LOW CURRENT TEST PASSED <<<<<<<<<<")
-    
