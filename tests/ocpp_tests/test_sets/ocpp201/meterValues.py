@@ -47,9 +47,10 @@ async def test_J01_19(
     log.info(
         "##################### J01.FR.19: Sending Meter Values not related to a transaction #################"
     )
-    test_utility.messages.clear()
 
-    test_controller.start()
+    log.info(
+        "##################### J01.FR.19: Allow MeterValues during J01.FR.19 (idle before transaction) #################"
+    )
 
     # -- Allow "MeterValues" during J01.FR.19 (idle before transaction) --
     fa = getattr(test_utility, "forbidden_actions", None)
@@ -64,6 +65,9 @@ async def test_J01_19(
                 if "MeterValues" in fa:
                     fa.remove("MeterValues")
 
+    test_utility.messages.clear()
+
+    test_controller.start()
 
     charge_point_v201 = await central_system_v201.wait_for_chargepoint(
         wait_for_bootnotification=True
@@ -197,7 +201,11 @@ async def test_J01_19(
             "eventType": "Ended"}
     )
 
-    # -- Forbid "MeterValues" authorization during J01.FR.19 --
+    log.info(
+        "##################### J01.FR.19: Forbid MeterValues during J01.FR.19  #################"
+    )
+
+    # -- Forbid "MeterValues" during J01.FR.19 --
     fa = getattr(test_utility, "forbidden_actions", None)
     if fa is not None and "MeterValues" not in fa:
         if isinstance(fa, list):
