@@ -52,9 +52,26 @@ async def test_J01_19(
         "##################### Prior to continuing, waiting 0.8s #################"
     )
 
-    # --- Slow down token publication under LAVA (optimal value: 0.8s) ---
+    # 1) --- Slow down token publication under LAVA (optimal value: 0.8s) ---
     import asyncio
     await asyncio.sleep(0.8)
+
+    log.info(
+        "##################### Then enabling idle MeterValues  #################"
+    )
+
+    # 2) --- Allow the idle MeterValues for J01.FR.19 ---
+    fa = getattr(test_utility, "forbidden_actions", None)
+    if fa:
+        if isinstance(fa, list):
+            if "MeterValues" in fa:
+                fa.remove("MeterValues")
+        else:
+            try:
+                fa.discard("MeterValues")
+            except:
+                if "MeterValues" in fa:
+                    fa.remove("MeterValues")
 
     test_utility.messages.clear()
 
@@ -172,6 +189,22 @@ async def test_J01_19(
         test_utility, charge_point_v201, "TransactionEvent", {
             "eventType": "Started"}
     )
+
+    log.info(
+        "##################### Then disabling idle of MeterValues  #################"
+    )
+
+    # 3) --- Restore MeterValues prohibition after Started ---
+    fa = getattr(test_utility, "forbidden_actions", None)
+    if fa:
+        if isinstance(fa, list):
+            if "MeterValues" not in fa:
+                fa.append("MeterValues")
+        else:
+            try:
+                fa.add("MeterValues")
+            except:
+                pass
 
     for _ in range(3):
         assert await wait_for_and_validate(
