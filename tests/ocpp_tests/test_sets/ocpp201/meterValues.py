@@ -60,18 +60,32 @@ async def test_J01_19(
         "##################### Then enabling idle MeterValues  #################"
     )
 
-    # 2) --- Allow the idle MeterValues for J01.FR.19 ---
+    # 2) --- Allow the idle MeterValues for J01.FR.19 (universal) ---
     fa = getattr(test_utility, "forbidden_actions", None)
     if fa:
-        if isinstance(fa, list):
-            if "MeterValues" in fa:
-                fa.remove("MeterValues")
-        else:
+        # Extract as a list (works for list, set, tuple, custom)
+        try:
+            items = list(fa)
+        except:
+            items = []
+
+        # Remove MeterValues if present
+        items = [x for x in items if x != "MeterValues"]
+
+        # Write back depending on underlying type
+        try:
+            # list-like
+            fa.clear()
+            fa.extend(items)
+        except:
             try:
-                fa.discard("MeterValues")
+                # set-like
+                fa.clear()
+                for x in items:
+                    fa.add(x)
             except:
-                if "MeterValues" in fa:
-                    fa.remove("MeterValues")
+                # fallback (immutable or unknown type)
+                pass
 
     test_utility.messages.clear()
 
@@ -194,15 +208,28 @@ async def test_J01_19(
         "##################### Then disabling idle of MeterValues  #################"
     )
 
-    # 3) --- Restore MeterValues prohibition after Started ---
+    # 3) --- Restore MeterValues prohibition (universal) ---
     fa = getattr(test_utility, "forbidden_actions", None)
     if fa:
-        if isinstance(fa, list):
-            if "MeterValues" not in fa:
-                fa.append("MeterValues")
-        else:
+        # Extract as list
+        try:
+            items = list(fa)
+        except:
+            items = []
+
+        # Ensure MeterValues is present exactly once
+        if "MeterValues" not in items:
+            items.append("MeterValues")
+
+        # Write back (list or set)
+        try:
+            fa.clear()
+            fa.extend(items)
+        except:
             try:
-                fa.add("MeterValues")
+                fa.clear()
+                for x in items:
+                    fa.add(x)
             except:
                 pass
 
