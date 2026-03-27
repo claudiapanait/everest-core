@@ -150,11 +150,13 @@ async def test_J01_19(
         )
 
     log.info(
-        "##################### Waiting 5s for EV connection #################"
+        "##################### Ignoring auto token #################"
     )
     # slow down token publication to make sure EV is connected before 
     import asyncio
-    await asyncio.sleep(5)
+    test_utility.messages.clear()   # previous messages  are withdrawn
+    await asyncio.sleep(3)          # let auto token passing
+    test_utility.messages.clear()   # messages related to ignored token are withdrawn
 
     # swipe id tag to authorize
     test_controller.swipe(id_tokenJ01.id_token)
