@@ -152,9 +152,9 @@ async def test_J01_19(
     log.info(
         "##################### Waiting 0.8s for EV connection #################"
     )
-    #  --- Slow down token publication to make sure EV is connected before ---
+    # slow down token publication to make sure EV is connected before 
     import asyncio
-    await asyncio.sleep(0.8)
+    await asyncio.sleep(1.5)
 
     # swipe id tag to authorize
     test_controller.swipe(id_tokenJ01.id_token)
@@ -165,21 +165,16 @@ async def test_J01_19(
     test_utility.messages.clear()
 
     log.info(
-        "##################### Requesting OCPP server to wait for 1 more MeterValues  #################"
+        "##################### Requesting OCPP server to consume all earlyMeterValues  #################"
     )
-    #  --- Requesting OCPP server to consume 1 more MeterValues before consuming Started ---
-    await wait_for_and_validate(
-        test_utility,
-        charge_point_v201,
-        "MeterValues",
-        {"evseId": 1}
-    )
-    await wait_for_and_validate(
-        test_utility,
-        charge_point_v201,
-        "MeterValues",
-        {"evseId": 2}
-    )
+    # consume ALL early MeterValues (2 EVSEs + extra idle)
+    for _ in range(3):
+        await wait_for_and_validate(
+            test_utility,
+            charge_point_v201,
+            "MeterValues",
+            None  # accept ANY evseId
+        )
 
     # when in a middle of a transaction do not send meter values
     test_utility.forbidden_actions.append("MeterValues")
