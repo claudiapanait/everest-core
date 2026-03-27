@@ -48,16 +48,6 @@ async def test_J01_19(
         "##################### J01.FR.19: Sending Meter Values not related to a transaction #################"
     )
 
-    log.info(
-        "##################### Prior to continuing, waiting 0.8s #################"
-    )
-
-    #  --- Slow down token publication under LAVA (optimal value: 0.8s) ---
-    import asyncio
-    await asyncio.sleep(0.8)
-
-    test_controller.swipe(id_tokenJ01.id_token)
-
     test_utility.messages.clear()
 
     test_controller.start()
@@ -159,6 +149,13 @@ async def test_J01_19(
             test_utility, charge_point_v201, "MeterValues", {"evseId": 2}
         )
 
+    log.info(
+        "##################### Waiting 0.8s for EV connection #################"
+    )
+    #  --- Slow down token publication to make sure EV is connected before ---
+    import asyncio
+    await asyncio.sleep(0.8)
+
     # swipe id tag to authorize
     test_controller.swipe(id_tokenJ01.id_token)
 
@@ -166,6 +163,17 @@ async def test_J01_19(
     test_controller.plug_in()
 
     test_utility.messages.clear()
+
+    log.info(
+        "##################### Requesting OCPP server to wait for 1 more MeterValues  #################"
+    )
+    #  --- Requesting OCPP server to consume 1 more MeterValues before consuming Started ---
+    await wait_for_and_validate(
+        test_utility,
+        charge_point_v201,
+        "MeterValues",
+        {"evseId": 1}
+    )
 
     # when in a middle of a transaction do not send meter values
     test_utility.forbidden_actions.append("MeterValues")
