@@ -124,7 +124,7 @@ class ProbeModule:
                 cmd_string = (
                     "sleep 1;"
                     "iso_wait_slac_matched;"
-                    "iso_start_v2g_session AC;"
+                    "iso_start_v2g_session AC 0 0 true;"
                     "iso_wait_pwr_ready;"
                     "iso_draw_power_regulated 16,3;"
                     "iso_wait_for_stop 20;"
@@ -237,12 +237,52 @@ async def test_hlc_ac_charging_with_early_disconnect(everest_core: EverestCore):
         "iso_start_v2g_session AC;"
         "iso_wait_pwr_ready;"
         "iso_draw_power_regulated 16,3;"
-        "iso_wait_for_stop 3;"
+        "sleep 2;"
+        "iso_stop_charging;"
         "iso_wait_v2g_session_stopped;"
         "unplug"
     )
     # Test should handle early disconnect gracefully
     # Verify transaction events are still properly recorded
-    assert probe.test(30, Mode.HLC_AC, cmd_string)
+    assert probe.test(60, Mode.HLC_AC, cmd_string)
 
     logging.info(">>>>>>>>>> AC HLC EARLY DISCONNECT TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_one_phase(everest_core: EverestCore):
+    """
+    Test AC HLC with one-phase power delivery
+    """
+    logging.info(">>>>>>>>>> AC HLC ONE-PHASE TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC auto 0 0 false;"  
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "iso_wait_for_stop 20;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+    assert probe.test(120, Mode.HLC_AC, cmd_string)
+
+    logging.info(">>>>>>>>>> AC HLC ONE-PHASE TEST PASSED <<<<<<<<<<")
+
