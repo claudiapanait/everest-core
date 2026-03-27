@@ -124,7 +124,7 @@ class ProbeModule:
                 cmd_string = (
                     "sleep 1;"
                     "iso_wait_slac_matched;"
-                    "iso_start_v2g_session AC 0 0 true;"
+                    "iso_start_v2g_session AC;"
                     "iso_wait_pwr_ready;"
                     "iso_draw_power_regulated 16,3;"
                     "iso_wait_for_stop 20;"
@@ -249,7 +249,7 @@ async def test_hlc_ac_charging_with_early_disconnect(everest_core: EverestCore):
     logging.info(">>>>>>>>>> AC HLC EARLY DISCONNECT TEST PASSED <<<<<<<<<<")
 
 
-@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.everest_core_config('config-sil-ac-1phase.yaml')
 @pytest.mark.asyncio
 async def test_hlc_ac_charging_one_phase(everest_core: EverestCore):
     """
@@ -275,7 +275,7 @@ async def test_hlc_ac_charging_one_phase(everest_core: EverestCore):
     cmd_string = (
         "sleep 1;"
         "iso_wait_slac_matched;"
-        "iso_start_v2g_session AC auto 0 0 false;"  
+        "iso_start_v2g_session AC;"  
         "iso_wait_pwr_ready;"
         "iso_draw_power_regulated 16,3;"
         "iso_wait_for_stop 20;"
