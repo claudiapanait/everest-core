@@ -150,11 +150,11 @@ async def test_J01_19(
         )
 
     log.info(
-        "##################### Waiting 0.8s for EV connection #################"
+        "##################### Waiting 5s for EV connection #################"
     )
     # slow down token publication to make sure EV is connected before 
     import asyncio
-    await asyncio.sleep(1.5)
+    await asyncio.sleep(5)
 
     # swipe id tag to authorize
     test_controller.swipe(id_tokenJ01.id_token)
