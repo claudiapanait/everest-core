@@ -174,6 +174,12 @@ async def test_J01_19(
         "MeterValues",
         {"evseId": 1}
     )
+    await wait_for_and_validate(
+        test_utility,
+        charge_point_v201,
+        "MeterValues",
+        {"evseId": 2}
+    )
 
     # when in a middle of a transaction do not send meter values
     test_utility.forbidden_actions.append("MeterValues")
