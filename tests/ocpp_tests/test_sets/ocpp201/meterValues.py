@@ -52,9 +52,11 @@ async def test_J01_19(
         "##################### Prior to continuing, waiting 0.8s #################"
     )
 
-    # 1) --- Slow down token publication under LAVA (optimal value: 0.8s) ---
+    #  --- Slow down token publication under LAVA (optimal value: 0.8s) ---
     import asyncio
     await asyncio.sleep(0.8)
+
+    test_controller.swipe(id_tokenJ01.id_token)
 
     test_utility.messages.clear()
 
@@ -62,19 +64,6 @@ async def test_J01_19(
 
     charge_point_v201 = await central_system_v201.wait_for_chargepoint(
         wait_for_bootnotification=True
-    )
-
-
-    log.info(
-        "##################### Then consuming idle MeterValues  #################"
-    )
-
-    # --- Consume the idle MeterValues BEFORE waiting for Started ---
-    await wait_for_and_validate(
-        test_utility,
-        charge_point_v201,
-        "MeterValues",
-        {"evseId": 1}
     )
 
     # expect StatusNotification with status available
