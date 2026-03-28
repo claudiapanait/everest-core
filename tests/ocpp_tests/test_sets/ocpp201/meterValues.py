@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
+# Copyright 2020 - 2022 Pionix GmbH and Contributors to EVerest
+
 # fmt: off
 import pytest
 from datetime import datetime
@@ -37,7 +40,7 @@ async def test_J01_19(
     evse_id2 = 2
     connector_id = 1
 
-    # Create unknown RFID token
+    # Unknown RFID token for this test
     id_tokenJ01 = IdTokenType(
         id_token="8BADF00D",
         type=IdTokenTypeEnum.iso14443
@@ -45,12 +48,13 @@ async def test_J01_19(
 
     log.info("===== J01.FR.19: Start test =====")
 
-    # Reset message buffer
+    # Reset initial message buffer
     test_utility.messages.clear()
 
-    # Start controller and wait for BootNotification
+    # Start controller
     test_controller.start()
 
+    # Wait for BootNotification
     charge_point_v201 = await central_system_v201.wait_for_chargepoint(
         wait_for_bootnotification=True
     )
@@ -100,7 +104,7 @@ async def test_J01_19(
     assert SetVariableResultType(**r.set_variable_result[0]).attribute_status == SetVariableStatusEnumType.accepted
 
     # -------------------------------------------------------------------------
-    # STEP 3 — Warm-up: accept 3 idle MeterValues bursts from both EVSEs
+    # STEP 3 — Warm‑up: accept 3 MeterValues bursts (idle)
     # -------------------------------------------------------------------------
     logging.debug("Warm-up: collecting MeterValues...")
 
@@ -109,35 +113,54 @@ async def test_J01_19(
         assert await wait_for_and_validate(test_utility, charge_point_v201, "MeterValues", {"evseId": 2})
 
     # -------------------------------------------------------------------------
-    # STEP 4 — Wait for EVConnected (slow under LAVA)
+    # STEP 4 — Wait for EVConnected (StatusNotification Occupied)
+    # Reason:
+    #   LAVA can be very slow; EVConnected may take 6–10 seconds.
+    #   We MUST wait explicitly for Occupied, not rely on a sleep().
     # -------------------------------------------------------------------------
-    log.info("===== Waiting 5 seconds to ensure EVConnected under LAVA =====")
-    await asyncio.sleep(5)
+    log.info("===== Waiting for EVConnected (StatusNotification Occupied) =====")
+
+    await wait_for_and_validate(
+        test_utility,
+        charge_point_v201,
+        "StatusNotification",
+        call201.StatusNotification(
+            datetime.now().isoformat(),
+            ConnectorStatusEnumType.occupied,
+            evse_id=evse_id1,
+            connector_id=connector_id,
+        ),
+        validate_status_notification_201,
+    )
 
     # -------------------------------------------------------------------------
-    # STEP 5 — User swipes RFID token (Authorize)
+    # STEP 5 — User swipe (Authorize)
+    # Now EVConnected is guaranteed → Auth will NOT ignore the token.
     # -------------------------------------------------------------------------
     log.info("===== User swipe to authorize =====")
     test_controller.swipe(id_tokenJ01.id_token)
 
     # -------------------------------------------------------------------------
-    # STEP 6 — EV is plugged in (simulate EVSE CP transitions)
+    # STEP 6 — EV plugs in (simulate CP handshake)
     # -------------------------------------------------------------------------
     test_controller.plug_in()
+
+    # Reset message buffer after plug-in
     test_utility.messages.clear()
 
     # -------------------------------------------------------------------------
     # STEP 7 — Backend accepts early MeterValues until Started is ready
+    # LAVA sends multiple bursts (evseId=1,2,1)
+    # Passing {} matches ANY payload (None would CRASH).
     # -------------------------------------------------------------------------
     log.info("===== Consuming early MeterValues (3 bursts) =====")
 
-    # LAVA sends typically 3 bursts (evseId=1 then 2 then 1)
     for _ in range(3):
         await wait_for_and_validate(
             test_utility,
             charge_point_v201,
             "MeterValues",
-            None   # Accept ANY payload
+            {}   # wildcard payload
         )
 
     # After authorization and plug-in, no more idle MV allowed
@@ -156,9 +179,11 @@ async def test_J01_19(
     )
 
     # -------------------------------------------------------------------------
-    # STEP 9 — User swipes again to de-authorize, ending transaction
+    # STEP 9 — User swipe again to stop
     # -------------------------------------------------------------------------
     test_controller.swipe(id_tokenJ01.id_token)
+
+    # Unplug
     test_controller.plug_out()
 
     # -------------------------------------------------------------------------
