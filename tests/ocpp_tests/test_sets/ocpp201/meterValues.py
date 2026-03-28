@@ -37,7 +37,6 @@ async def test_J01_19(
     evse_id2 = 2
     connector_id = 1
 
-    # Create unknown RFID token
     id_tokenJ01 = IdTokenType(
         id_token="8BADF00D",
         type=IdTokenTypeEnum.iso14443
@@ -45,10 +44,7 @@ async def test_J01_19(
 
     log.info("===== J01.FR.19: Start test =====")
 
-    # Reset message buffer
     test_utility.messages.clear()
-
-    # Start controller and wait for BootNotification
     test_controller.start()
 
     charge_point_v201 = await central_system_v201.wait_for_chargepoint(
@@ -88,32 +84,44 @@ async def test_J01_19(
     # STEP 2 — Configure metering controllers
     # -------------------------------------------------------------------------
     r = await charge_point_v201.set_config_variables_req("AlignedDataCtrlr", "Interval", "3")
-    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status == SetVariableStatusEnumType.accepted
+    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status \
+           == SetVariableStatusEnumType.accepted
 
     r = await charge_point_v201.set_config_variables_req("SampledDataCtrlr", "TxUpdatedInterval", "3")
-    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status == SetVariableStatusEnumType.accepted
+    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status \
+           == SetVariableStatusEnumType.accepted
 
     r = await charge_point_v201.set_config_variables_req("AlignedDataCtrlr", "SendDuringIdle", "true")
-    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status == SetVariableStatusEnumType.accepted
+    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status \
+           == SetVariableStatusEnumType.accepted
 
     r = await charge_point_v201.set_config_variables_req("ChargingStation", "PhaseRotation", "TRS")
-    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status == SetVariableStatusEnumType.accepted
+    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status \
+           == SetVariableStatusEnumType.accepted
 
     # -------------------------------------------------------------------------
-    # STEP 3 — Warm-up: accept 3 idle MeterValues bursts from both EVSEs
+    # STEP 3 — Warm‑up: accept 3 MeterValues bursts (idle)
     # -------------------------------------------------------------------------
     logging.debug("Warm-up: collecting MeterValues...")
 
     for _ in range(3):
-        assert await wait_for_and_validate(test_utility, charge_point_v201, "MeterValues", {"evseId": 1})
-        assert await wait_for_and_validate(test_utility, charge_point_v201, "MeterValues", {"evseId": 2})
+        assert await wait_for_and_validate(test_utility, charge_point_v201,
+                                           "MeterValues", {"evseId": 1})
+        assert await wait_for_and_validate(test_utility, charge_point_v201,
+                                           "MeterValues", {"evseId": 2})
 
     # -------------------------------------------------------------------------
-    # STEP 4 — Wait for EVConnected (StatusNotification Occupied)
+    # STEP 4 — EV plugs in FIRST (IEC 61851 correct sequence)
+    # -------------------------------------------------------------------------
+    log.info("===== EV plug-in BEFORE authorization =====")
+    test_controller.plug_in()
+    test_utility.messages.clear()
+
+    # -------------------------------------------------------------------------
+    # STEP 5 — Wait for EVConnected (StatusNotification Occupied)
     # -------------------------------------------------------------------------
     log.info("===== Waiting for EVConnected (StatusNotification Occupied) =====")
 
-    # ✅ Correction LAVA : matcher uniquement connectorStatus + evseId
     await wait_for_and_validate(
         test_utility,
         charge_point_v201,
@@ -123,16 +131,10 @@ async def test_J01_19(
     )
 
     # -------------------------------------------------------------------------
-    # STEP 5 — User swipes RFID token (Authorize)
+    # STEP 6 — User swipes RFID token (Authorize)
     # -------------------------------------------------------------------------
-    log.info("===== User swipe to authorize =====")
+    log.info(f"===== SWIPE AUTH: using token {id_tokenJ01.id_token} =====")
     test_controller.swipe(id_tokenJ01.id_token)
-
-    # -------------------------------------------------------------------------
-    # STEP 6 — EV is plugged in (simulate EVSE CP transitions)
-    # -------------------------------------------------------------------------
-    test_controller.plug_in()
-    test_utility.messages.clear()
 
     # -------------------------------------------------------------------------
     # STEP 7 — Backend accepts early MeterValues until Started is ready
@@ -144,10 +146,10 @@ async def test_J01_19(
             test_utility,
             charge_point_v201,
             "MeterValues",
-            {}   # wildcard payload
+            {}   # wildcard ANY MeterValues
         )
 
-    # After authorization and plug-in, no more idle MV allowed
+    # After plug-in and authorization, no more idle MV allowed
     test_utility.forbidden_actions.append("MeterValues")
 
     # -------------------------------------------------------------------------
@@ -159,12 +161,13 @@ async def test_J01_19(
         test_utility,
         charge_point_v201,
         "TransactionEvent",
-        {},  # wildcard, matches any Started
+        {},  # wildcard Started
     )
 
     # -------------------------------------------------------------------------
-    # STEP 9 — User swipes again to de-authorize, ending transaction
+    # STEP 9 — User swipes again to stop the transaction
     # -------------------------------------------------------------------------
+    log.info(f"===== SWIPE STOP: using token {id_tokenJ01.id_token} =====")
     test_controller.swipe(id_tokenJ01.id_token)
     test_controller.plug_out()
 
