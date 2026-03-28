@@ -127,7 +127,6 @@ async def test_J01_19(
         charge_point_v201,
         "StatusNotification",
         {"connectorStatus": "Occupied", "evseId": 1},
-        validate_status_notification_201,
     )
 
     # -------------------------------------------------------------------------
