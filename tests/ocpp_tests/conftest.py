@@ -194,6 +194,14 @@ def probe_module(
         "force_unlock",
         lambda arg: True,
     )
+    # ✅ Patch legacy command
+    implement_command(
+        module,
+        skip_implementation,
+        "ProbeModuleConnectorA",
+        "set_faulted",
+        lambda arg: None,
+    )
     implement_command(
         module,
         skip_implementation,
@@ -291,6 +299,14 @@ def probe_module(
         "ProbeModuleConnectorB",
         "force_unlock",
         lambda arg: True,
+    )
+    # ✅ Patch legacy command
+    implement_command(
+        module,
+        skip_implementation,
+        "ProbeModuleConnectorB",
+        "set_faulted",
+        lambda arg: None,
     )
     implement_command(
         module,
