@@ -152,7 +152,6 @@ async def test_J01_19(
 # ======================================================================
 @pytest.mark.asyncio
 @pytest.mark.ocpp_version("ocpp2.0.1")
-@pytest.mark.everest_core_config("everest-config-ocpp201-1evse.yaml")
 async def test_J01_19_rejected_token(
     central_system_v201: CentralSystem,
     test_controller: TestController,
@@ -239,7 +238,6 @@ async def test_J01_19_rejected_token(
 # ======================================================================
 @pytest.mark.asyncio
 @pytest.mark.ocpp_version("ocpp2.0.1")
-@pytest.mark.everest_core_config("everest-config-ocpp201-1evse.yaml")
 async def test_J01_19_early_swipe_no_ev_connected(
     central_system_v201: CentralSystem,
     test_controller: TestController,
