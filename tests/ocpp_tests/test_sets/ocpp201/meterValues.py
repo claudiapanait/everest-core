@@ -184,7 +184,6 @@ async def test_J01_19(
     )
 
 
-
 # ======================================================================
 # ✅ TEST 2 — NEGATIVE: Token rejected → charging must NOT start
 # ======================================================================
@@ -213,6 +212,12 @@ async def test_J01_19_rejected_token(
     test_utility.messages.clear()
     test_controller.start()
 
+    # ✅ Install backend REJECTION BEFORE chargepoint connects
+    async def reject_authorize(request):
+        return call_result201.AuthorizePayload(id_token_info={"status": "Rejected"})
+    central_system_v201.on_authorize = reject_authorize
+
+    # NOW wait for chargepoint
     charge_point_v201 = await central_system_v201.wait_for_chargepoint(
         wait_for_bootnotification=True
     )
@@ -238,24 +243,18 @@ async def test_J01_19_rejected_token(
         {"connectorStatus": "Occupied", "evseId": evse_id},
     )
 
-    # Backend rejects authorization
-    async def reject_authorize(request):
-        return call_result201.AuthorizePayload(id_token_info={"status": "Rejected"})
-    central_system_v201.on_authorize = reject_authorize
-
-    # Forbid ANY TransactionEvent
+    # Forbid any TransactionEvent
     test_utility.forbidden_actions.append("TransactionEvent")
 
     # Swipe rejected token
     test_controller.swipe(bad_token.id_token)
 
-    # Forbidden event => instant FAIL; else PASS after timeout
+    # forbidden_actions will auto-FAIL if Started appears
     await asyncio.sleep(5)
 
     log.info("✅ PASS: rejected token did NOT start charging")
 
     test_controller.plug_out()
-
 
 
 # ======================================================================
