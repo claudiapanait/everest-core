@@ -13,8 +13,7 @@ from everest.testing.ocpp_utils.fixtures import *
 from everest_test_utils import *
 from ocpp.v201.enums import (IdTokenEnumType as IdTokenTypeEnum,
                              SetVariableStatusEnumType,
-                             ConnectorStatusEnumType,
-                             GetVariableStatusEnumType)
+                             ConnectorStatusEnumType)
 from ocpp.v201.datatypes import *
 from ocpp.v201 import call as call201, call_result as call_result201
 # fmt: on
@@ -54,7 +53,7 @@ async def test_J01_19(
         wait_for_bootnotification=True
     )
 
-    # Expect both connectors Available
+    # STEP 1 — Expect both connectors Available
     assert await wait_for_and_validate(
         test_utility,
         charge_point_v201,
@@ -81,58 +80,70 @@ async def test_J01_19(
         validate_status_notification_201,
     )
 
-    # Configure metering controllers
+    # STEP 2 — Configure metering controllers
     r = await charge_point_v201.set_config_variables_req("AlignedDataCtrlr", "Interval", "3")
-    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status == SetVariableStatusEnumType.accepted
+    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status \
+           == SetVariableStatusEnumType.accepted
 
     r = await charge_point_v201.set_config_variables_req("SampledDataCtrlr", "TxUpdatedInterval", "3")
-    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status == SetVariableStatusEnumType.accepted
+    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status \
+           == SetVariableStatusEnumType.accepted
 
     r = await charge_point_v201.set_config_variables_req("AlignedDataCtrlr", "SendDuringIdle", "true")
-    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status == SetVariableStatusEnumType.accepted
+    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status \
+           == SetVariableStatusEnumType.accepted
 
     r = await charge_point_v201.set_config_variables_req("ChargingStation", "PhaseRotation", "TRS")
-    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status == SetVariableStatusEnumType.accepted
+    assert SetVariableResultType(**r.set_variable_result[0]).attribute_status \
+           == SetVariableStatusEnumType.accepted
 
-    # Warm-up: accept 3 MeterValues bursts
+    # STEP 3 — Warm‑up
     logging.debug("Warm-up: collecting MeterValues...")
-
     for _ in range(3):
         assert await wait_for_and_validate(test_utility, charge_point_v201, "MeterValues", {"evseId": 1})
         assert await wait_for_and_validate(test_utility, charge_point_v201, "MeterValues", {"evseId": 2})
 
-    # EV plugs in
-    log.info("===== EV plug-in BEFORE authorization =====")
+    # STEP 4 — EV plugs in FIRST
     test_controller.plug_in()
     test_utility.messages.clear()
 
-    # Wait for EVConnected
+    # STEP 5 — Waiting for EVConnected
     await wait_for_and_validate(
-        test_utility, charge_point_v201, "StatusNotification",
+        test_utility,
+        charge_point_v201,
+        "StatusNotification",
         {"connectorStatus": "Occupied", "evseId": 1},
     )
 
-    # User swipes RFID token
-    log.info(f"===== SWIPE AUTH: using token {id_tokenJ01.id_token} =====")
+    # STEP 6 — User swipes RFID token
     test_controller.swipe(id_tokenJ01.id_token)
 
-    # Early MV allowed for 3 bursts
+    # STEP 7 — Accept early MV
     for _ in range(3):
         await wait_for_and_validate(test_utility, charge_point_v201, "MeterValues", {})
 
+    # No more idle MV allowed
     test_utility.forbidden_actions.append("MeterValues")
 
-    # Expect Started
-    log.info("===== Expecting TransactionEvent Started =====")
-    assert await wait_for_and_validate(test_utility, charge_point_v201, "TransactionEvent", {})
+    # STEP 8 — Expect TransactionEvent Started
+    assert await wait_for_and_validate(
+        test_utility,
+        charge_point_v201,
+        "TransactionEvent",
+        {},
+    )
 
-    # Stop transaction
-    log.info(f"===== SWIPE STOP: using token {id_tokenJ01.id_token} =====")
+    # STEP 9 — Stop transaction
     test_controller.swipe(id_tokenJ01.id_token)
     test_controller.plug_out()
 
-    # Expect Ended
-    assert await wait_for_and_validate(test_utility, charge_point_v201, "TransactionEvent", {})
+    # STEP 10 — Expect TransactionEvent Ended
+    assert await wait_for_and_validate(
+        test_utility,
+        charge_point_v201,
+        "TransactionEvent",
+        {},
+    )
 
 
 
@@ -149,8 +160,7 @@ async def test_J01_19_rejected_token(
 ):
     """
     NEGATIVE TEST:
-    Backend rejects the token.
-    Charge MUST NOT start.
+    Backend rejects the token => no TransactionEvent Started must appear.
     """
 
     evse_id = 1
@@ -164,30 +174,27 @@ async def test_J01_19_rejected_token(
     test_utility.messages.clear()
     test_controller.start()
 
-    # ---------------------------------------------------------
-    # MASK DUMMY AUTHORIZE FROM token_provider
-    # ---------------------------------------------------------
+    # MASK DUMMY AUTHORIZE
     dummy_phase = True
 
     async def filtered_authorize(request):
         nonlocal dummy_phase
 
-        # Ignore dummy Authorize generated when EV becomes Occupied
         if dummy_phase:
             log.info("Ignoring dummy Authorize from token_provider")
             return call_result201.AuthorizePayload(
                 id_token_info={"status": "Rejected"}
             )
 
-        # Real swipe => reject
+        # REAL swipe: reject
         return call_result201.AuthorizePayload(
             id_token_info={"status": "Rejected"}
         )
 
-    central_system_v201.on_authorize = filtered_authorize
-    # ---------------------------------------------------------
+    # ✅ KEY FIX
+    central_system_v201.on_authorize_request = filtered_authorize
 
-    # Wait for charge point
+    # Start CP
     charge_point_v201 = await central_system_v201.wait_for_chargepoint(
         wait_for_bootnotification=True
     )
@@ -204,10 +211,9 @@ async def test_J01_19_rejected_token(
         validate_status_notification_201,
     )
 
-    # EV plugs in (dummy Authorize triggered here)
+    # EV plugs in
     test_controller.plug_in()
-
-    # Clear dummy messages
+    test_utility.forbidden_actions.append("TransactionEvent")  # block ANY Started
     test_utility.messages.clear()
 
     # Expect Occupied
@@ -219,10 +225,6 @@ async def test_J01_19_rejected_token(
     # Now REAL swipe
     dummy_phase = False
 
-    # Forbid ANY Started event
-    test_utility.forbidden_actions.append("TransactionEvent")
-
-    # Swipe rejected token
     test_controller.swipe(bad_token.id_token)
 
     await asyncio.sleep(5)
@@ -233,7 +235,7 @@ async def test_J01_19_rejected_token(
 
 
 # ======================================================================
-# ✅ TEST 3 — NEGATIVE: Swipe BEFORE EV connected → no charge
+# ✅ TEST 3 — NEGATIVE: Early swipe → no charging
 # ======================================================================
 @pytest.mark.asyncio
 @pytest.mark.ocpp_version("ocpp2.0.1")
@@ -260,15 +262,11 @@ async def test_J01_19_early_swipe_no_ev_connected(
     test_utility.messages.clear()
     test_controller.start()
 
-    # ---------------------------------------------------------
-    # MASK DUMMY AUTHORIZE FROM token_provider
-    # ---------------------------------------------------------
     dummy_phase = True
 
     async def filtered_authorize(request):
         nonlocal dummy_phase
 
-        # Filter dummy Authorize sent automatically when EV becomes Occupied
         if dummy_phase:
             log.info("Ignoring dummy Authorize from token_provider")
             return call_result201.AuthorizePayload(
@@ -280,10 +278,9 @@ async def test_J01_19_early_swipe_no_ev_connected(
             id_token_info={"status": "Accepted"}
         )
 
-    central_system_v201.on_authorize = filtered_authorize
-    # ---------------------------------------------------------
+    # ✅ KEY FIX
+    central_system_v201.on_authorize_request = filtered_authorize
 
-    # Wait for charge point
     charge_point_v201 = await central_system_v201.wait_for_chargepoint(
         wait_for_bootnotification=True
     )
@@ -301,19 +298,16 @@ async def test_J01_19_early_swipe_no_ev_connected(
         validate_status_notification_201,
     )
 
-    # EV plugs in → dummy Authorize may fire
+    # EV plugs in → dummy authorize may fire
     test_controller.plug_in()
-
-    # Clear dummy Authorize
     test_utility.messages.clear()
 
-    # Now real swipe should be handled normally
     dummy_phase = False
 
-    # Forbid Started
+    # Forbid any Started
     test_utility.forbidden_actions.append("TransactionEvent")
 
-    # Early swipe (EV NOT connected before swipe)
+    # Early swipe → EV not connected yet
     test_controller.swipe(good_token.id_token)
 
     await asyncio.sleep(5)
