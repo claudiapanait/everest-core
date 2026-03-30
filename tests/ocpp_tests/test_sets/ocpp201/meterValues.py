@@ -22,6 +22,9 @@ from ocpp.v201 import call as call201, call_result as call_result201
 log = logging.getLogger("meterValues")
 
 
+# ======================================================================
+# ✅ TEST 1 — POSITIVE
+# ======================================================================
 @pytest.mark.asyncio
 @pytest.mark.ocpp_version("ocpp2.0.1")
 async def test_J01_19(
@@ -181,6 +184,10 @@ async def test_J01_19(
     )
 
 
+
+# ======================================================================
+# ✅ TEST 2 — NEGATIVE: Token rejected → charging must NOT start
+# ======================================================================
 @pytest.mark.asyncio
 @pytest.mark.ocpp_version("ocpp2.0.1")
 async def test_J01_19_rejected_token(
@@ -190,9 +197,9 @@ async def test_J01_19_rejected_token(
 ):
     """
     NEGATIVE TEST:
-    Backend rejects the token -> no TransactionEvent Started must occur.
+    Backend rejects the token => no TransactionEvent Started must appear.
     PASS = no Started event
-    FAIL = charge starts anyway
+    FAIL = charging starts despite rejection
     """
 
     evse_id = 1
@@ -231,25 +238,29 @@ async def test_J01_19_rejected_token(
         {"connectorStatus": "Occupied", "evseId": evse_id},
     )
 
-    # Backend rejects token
+    # Backend rejects authorization
     async def reject_authorize(request):
         return call_result201.AuthorizePayload(id_token_info={"status": "Rejected"})
-
     central_system_v201.on_authorize = reject_authorize
 
-    # ❗ NO TransactionEvent must appear after a Reject
+    # Forbid ANY TransactionEvent
     test_utility.forbidden_actions.append("TransactionEvent")
 
     # Swipe rejected token
     test_controller.swipe(bad_token.id_token)
 
-    # If any TransactionEvent comes, forbidden_actions will auto‑FAIL.
-    # Otherwise test ends cleanly (PASS).
+    # Forbidden event => instant FAIL; else PASS after timeout
     await asyncio.sleep(5)
+
+    log.info("✅ PASS: rejected token did NOT start charging")
 
     test_controller.plug_out()
 
 
+
+# ======================================================================
+# ✅ TEST 3 — NEGATIVE: Early swipe (EV NOT connected → must NOT start)
+# ======================================================================
 @pytest.mark.asyncio
 @pytest.mark.ocpp_version("ocpp2.0.1")
 async def test_J01_19_early_swipe_no_ev_connected(
@@ -260,7 +271,9 @@ async def test_J01_19_early_swipe_no_ev_connected(
     """
     NEGATIVE TEST:
     User swipes BEFORE EV is connected.
-    Backend accepts token, but transaction MUST NOT start.
+    Backend accepts token, but charging MUST NOT start.
+    PASS = no TransactionEvent Started
+    FAIL = charging starts even though EV not connected
     """
 
     evse_id = 1
@@ -290,20 +303,21 @@ async def test_J01_19_early_swipe_no_ev_connected(
         validate_status_notification_201,
     )
 
-    # Backend ACCEPTS token
+    # Backend ACCEPTS token (this makes the test stronger)
     async def accept_authorize(request):
         return call_result201.AuthorizePayload(id_token_info={"status": "Accepted"})
-
     central_system_v201.on_authorize = accept_authorize
 
-    # ❗ FORBID any TransactionEvent — EV not connected → no session allowed
+    # Forbid Started events (EV not connected)
     test_utility.forbidden_actions.append("TransactionEvent")
 
-    # Early swipe
+    # User swipes too early
     test_controller.swipe(good_token.id_token)
 
-    # No Started must occur → forbidden_actions will enforce FAIL if needed
+    # Forbidden event => instant FAIL; else PASS after small timeout
     await asyncio.sleep(5)
+
+    log.info("✅ PASS: early swipe did NOT start charging")
 
     # Cleanup
     test_controller.plug_in()
