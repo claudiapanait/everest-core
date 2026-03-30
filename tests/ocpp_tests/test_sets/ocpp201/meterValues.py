@@ -237,18 +237,15 @@ async def test_J01_19_rejected_token(
 
     central_system_v201.on_authorize = reject_authorize
 
+    # ❗ NO TransactionEvent must appear after a Reject
+    test_utility.forbidden_actions.append("TransactionEvent")
+
     # Swipe rejected token
     test_controller.swipe(bad_token.id_token)
 
-    # Ensure no "Started"
-    try:
-        await wait_for_and_validate(
-            test_utility, charge_point_v201,
-            "TransactionEvent", {"eventType": "Started"}, timeout=5
-        )
-        assert False, "FAIL: charge started with rejected token"
-    except asyncio.TimeoutError:
-        pass  # PASS
+    # If any TransactionEvent comes, forbidden_actions will auto‑FAIL.
+    # Otherwise test ends cleanly (PASS).
+    await asyncio.sleep(5)
 
     test_controller.plug_out()
 
@@ -299,19 +296,14 @@ async def test_J01_19_early_swipe_no_ev_connected(
 
     central_system_v201.on_authorize = accept_authorize
 
-    # EARLY swipe before EV is connected
+    # ❗ FORBID any TransactionEvent — EV not connected → no session allowed
+    test_utility.forbidden_actions.append("TransactionEvent")
+
+    # Early swipe
     test_controller.swipe(good_token.id_token)
 
-    # No Started event expected
-    try:
-        await wait_for_and_validate(
-            test_utility, charge_point_v201,
-            "TransactionEvent", {"eventType": "Started"},
-            timeout=5
-        )
-        assert False, "FAIL: charge started even though EV was not connected"
-    except asyncio.TimeoutError:
-        pass  # PASS
+    # No Started must occur → forbidden_actions will enforce FAIL if needed
+    await asyncio.sleep(5)
 
     # Cleanup
     test_controller.plug_in()
