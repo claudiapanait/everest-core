@@ -224,6 +224,7 @@ def probe_module(
         "set_plug_and_charge_configuration",
         lambda arg: True,
     )
+
     implement_command(
         module,
         skip_implementation,
@@ -323,6 +324,7 @@ def probe_module(
         "set_plug_and_charge_configuration",
         lambda arg: True,
     )
+
     implement_command(
         module,
         skip_implementation,
@@ -368,6 +370,7 @@ def probe_module(
         "set_system_time",
         lambda arg: True,
     )
+
     implement_command(
         module,
         skip_implementation,
@@ -393,7 +396,7 @@ def probe_module(
         module,
         skip_implementation,
         "ProbeModuleSecurity",
-        "install_ca_certificate",
+        "install_ca_certificate",   # default handler
         lambda arg: "Accepted",
     )
     implement_command(
@@ -481,7 +484,16 @@ def probe_module(
         lambda arg: {"status": "NotFound", "info": []},
     )
 
-    # ✅✅ Patch : add a clean teardown
+    # ✅ Minimal patch:
+    # Ensure install_ca_certificate always exists, even when the test
+    # asks to skip its implementation.
+    module.implement_command(
+        "ProbeModuleSecurity",
+        "install_ca_certificate",
+        lambda arg: "NotSupported"
+    )
+
+    # ✅ Clean teardown
     yield module
     time.sleep(0.2)
     try:
