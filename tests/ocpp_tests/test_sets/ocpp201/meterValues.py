@@ -179,3 +179,140 @@ async def test_J01_19(
         "TransactionEvent",
         {},  # wildcard Ended
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.ocpp_version("ocpp2.0.1")
+async def test_J01_19_rejected_token(
+    central_system_v201: CentralSystem,
+    test_controller: TestController,
+    test_utility: TestUtility,
+):
+    """
+    NEGATIVE TEST:
+    Backend rejects the token -> no TransactionEvent Started must occur.
+    PASS = no Started event
+    FAIL = charge starts anyway
+    """
+
+    evse_id = 1
+    connector_id = 1
+
+    bad_token = IdTokenType(
+        id_token="DEADBEEF",
+        type=IdTokenTypeEnum.iso14443
+    )
+
+    test_utility.messages.clear()
+    test_controller.start()
+
+    charge_point_v201 = await central_system_v201.wait_for_chargepoint(
+        wait_for_bootnotification=True
+    )
+
+    # Expect Available
+    assert await wait_for_and_validate(
+        test_utility, charge_point_v201, "StatusNotification",
+        call201.StatusNotification(
+            datetime.now().isoformat(),
+            ConnectorStatusEnumType.available,
+            evse_id=evse_id,
+            connector_id=connector_id,
+        ),
+        validate_status_notification_201,
+    )
+
+    # EV plugs in
+    test_controller.plug_in()
+    test_utility.messages.clear()
+
+    await wait_for_and_validate(
+        test_utility, charge_point_v201, "StatusNotification",
+        {"connectorStatus": "Occupied", "evseId": evse_id},
+    )
+
+    # Backend rejects token
+    async def reject_authorize(request):
+        return call_result201.AuthorizePayload(id_token_info={"status": "Rejected"})
+
+    central_system_v201.on_authorize = reject_authorize
+
+    # Swipe rejected token
+    test_controller.swipe(bad_token.id_token)
+
+    # Ensure no "Started"
+    try:
+        await wait_for_and_validate(
+            test_utility, charge_point_v201,
+            "TransactionEvent", {"eventType": "Started"}, timeout=5
+        )
+        assert False, "FAIL: charge started with rejected token"
+    except asyncio.TimeoutError:
+        pass  # PASS
+
+    test_controller.plug_out()
+
+
+@pytest.mark.asyncio
+@pytest.mark.ocpp_version("ocpp2.0.1")
+async def test_J01_19_early_swipe_no_ev_connected(
+    central_system_v201: CentralSystem,
+    test_controller: TestController,
+    test_utility: TestUtility,
+):
+    """
+    NEGATIVE TEST:
+    User swipes BEFORE EV is connected.
+    Backend accepts token, but transaction MUST NOT start.
+    """
+
+    evse_id = 1
+    connector_id = 1
+
+    good_token = IdTokenType(
+        id_token="CAFEBABE",
+        type=IdTokenTypeEnum.iso14443
+    )
+
+    test_utility.messages.clear()
+    test_controller.start()
+
+    charge_point_v201 = await central_system_v201.wait_for_chargepoint(
+        wait_for_bootnotification=True
+    )
+
+    # Expect Available
+    assert await wait_for_and_validate(
+        test_utility, charge_point_v201, "StatusNotification",
+        call201.StatusNotification(
+            datetime.now().isoformat(),
+            ConnectorStatusEnumType.available,
+            evse_id=evse_id,
+            connector_id=connector_id,
+        ),
+        validate_status_notification_201,
+    )
+
+    # Backend ACCEPTS token
+    async def accept_authorize(request):
+        return call_result201.AuthorizePayload(id_token_info={"status": "Accepted"})
+
+    central_system_v201.on_authorize = accept_authorize
+
+    # EARLY swipe before EV is connected
+    test_controller.swipe(good_token.id_token)
+
+    # No Started event expected
+    try:
+        await wait_for_and_validate(
+            test_utility, charge_point_v201,
+            "TransactionEvent", {"eventType": "Started"},
+            timeout=5
+        )
+        assert False, "FAIL: charge started even though EV was not connected"
+    except asyncio.TimeoutError:
+        pass  # PASS
+
+    # Cleanup
+    test_controller.plug_in()
+    test_controller.plug_out()
