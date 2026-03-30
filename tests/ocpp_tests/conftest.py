@@ -196,13 +196,15 @@ def probe_module(
         lambda arg: True,
     )
     # ✅ Patch legacy command
-    implement_command(
-        module,
-        skip_implementation,
-        "ProbeModuleConnectorA",
-        "set_faulted",
-        lambda arg: None,
-    )
+    try:
+        module.implement_command(
+            "ProbeModuleConnectorA",
+            "set_faulted",
+            lambda arg: None
+        )
+    except Exception:
+        pass
+
     implement_command(
         module,
         skip_implementation,
@@ -303,13 +305,15 @@ def probe_module(
         lambda arg: True,
     )
     # ✅ Patch legacy command
-    implement_command(
-        module,
-        skip_implementation,
-        "ProbeModuleConnectorB",
-        "set_faulted",
-        lambda arg: None,
-    )
+    try:
+        module.implement_command(
+            "ProbeModuleConnectorB",
+            "set_faulted",
+            lambda arg: None
+        )
+    except Exception:
+        pass
+
     implement_command(
         module,
         skip_implementation,
@@ -396,7 +400,7 @@ def probe_module(
         module,
         skip_implementation,
         "ProbeModuleSecurity",
-        "install_ca_certificate",   # default handler
+        "install_ca_certificate",
         lambda arg: "Accepted",
     )
     implement_command(
@@ -484,17 +488,9 @@ def probe_module(
         lambda arg: {"status": "NotFound", "info": []},
     )
 
-    # ✅ Minimal patch:
-    # Ensure install_ca_certificate always exists, even when the test
-    # asks to skip its implementation.
-    module.implement_command(
-        "ProbeModuleSecurity",
-        "install_ca_certificate",
-        lambda arg: "NotSupported"
-    )
-
-    # ✅ Clean teardown
+    # Clean teardown
     yield module
+
     time.sleep(0.2)
     try:
         module.stop()
