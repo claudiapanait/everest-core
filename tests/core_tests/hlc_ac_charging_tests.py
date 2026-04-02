@@ -277,7 +277,7 @@ async def test_hlc_ac_charging_one_phase(everest_core: EverestCore):
         "iso_wait_slac_matched;"
         "iso_start_v2g_session AC;"  
         "iso_wait_pwr_ready;"
-        "iso_draw_power_regulated 16,3;"
+        "iso_draw_power_regulated 16,1;"
         "iso_wait_for_stop 20;"
         "iso_wait_v2g_session_stopped;"
         "unplug"
