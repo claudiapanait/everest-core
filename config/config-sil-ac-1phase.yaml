@@ -47,7 +47,7 @@ active_modules:
     config_module:
       auto_enable: true
       auto_exec: false
-      auto_exec_commands: sleep 1;iec_wait_pwr_ready;sleep 1;draw_power_regulated 16,3;sleep 30;unplug
+      auto_exec_commands: sleep 1;iec_wait_pwr_ready;sleep 1;draw_power_regulated 16,1;sleep 30;unplug
       connector_id: 1
       three_phases: false  # Single-phase configuration
       ac_nominal_voltage: 230  # Voltage for single phase
@@ -137,6 +137,10 @@ active_modules:
     config_module:
       device: auto
       supported_ISO15118_2: true
+      energy_transfer_mode: AC_single_phase_core
+      ac_nominal_voltage: 230
+      payment_option: ExternalPayment
+      sdp_retry_cycles: 3  # Default is 1
     connections: {}
     module: PyEvJosev
 
@@ -145,6 +149,7 @@ active_modules:
       device: auto
       tls_security: allow
       supported_DIN70121: false
+      enable_contract_cert_install: false
     module: EvseV2G
     connections:
       security:
