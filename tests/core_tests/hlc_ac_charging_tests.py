@@ -257,6 +257,18 @@ async def test_hlc_ac_charging_one_phase(everest_core: EverestCore):
     """
     logging.info(">>>>>>>>>> AC HLC ONE-PHASE TEST START <<<<<<<<<<")
 
+    # Enable ALL iso15118 library logging
+    import logging as py_logging
+    iso_logger = py_logging.getLogger('iso15118')
+    iso_logger.setLevel(py_logging.DEBUG)
+
+    # Add handler to see iso15118 logs
+    handler = py_logging.StreamHandler()
+    handler.setLevel(py_logging.DEBUG)
+    formatter = py_logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    iso_logger.addHandler(handler)
+
     test_connections = {
         'test_control': [Requirement('ev_manager', 'main')],
         'connector_1': [Requirement('connector_1', 'evse')],
