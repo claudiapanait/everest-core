@@ -333,7 +333,7 @@ async def test_hlc_ac_charging_with_pause_resume(everest_core: EverestCore):
         "sleep 5;"
         "iso_pause_charging;"
         "sleep 3;"
-        "iso_wait_for_resume;"
+        "iso_wait_for_resume 15;"
         "iso_wait_for_stop 15;"
         "iso_wait_v2g_session_stopped;"
         "unplug"
