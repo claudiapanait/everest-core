@@ -253,11 +253,12 @@ async def test_hlc_ac_charging_with_early_disconnect(everest_core: EverestCore):
 
 @pytest.mark.everest_core_config('config-sil-ac-1phase.yaml')
 @pytest.mark.asyncio
-async def test_hlc_ac_charging_one_phase(everest_core: EverestCore):
+async def test_hlc_ac_charging_one_phase(everest_core: EverestCore, caplog):
     """
     Test AC HLC with one-phase power delivery
     """
     logging.info(">>>>>>>>>> AC HLC ONE-PHASE TEST START <<<<<<<<<<")
+    caplog.set_level(logging.DEBUG)
 
     test_connections = {
         'test_control': [Requirement('ev_manager', 'main')],
@@ -284,12 +285,18 @@ async def test_hlc_ac_charging_one_phase(everest_core: EverestCore):
         "iso_wait_v2g_session_stopped;"
         "unplug"
     )
-    assert probe.test(120, Mode.HLC_AC, cmd_string)
-    logging.info("Check logs for '3ph/1ph: Switching #ph from 3 to 1'")
-
-    logging.info(f"Events received: {probe._all_events}")
-    assert '3ph/1ph: Switching #ph from 3 to 1' in probe._all_events
+    result = probe.test(120, Mode.HLC_AC, cmd_string)
+    assert result, "Charging test failed"
     assert probe._energy_wh_import > 0, "No energy was imported"
+    logging.info("Check logs for '3ph/1ph: Switching #ph from 3 to 1'")
+    phase_switch_log = "3ph/1ph: Switching #ph from 3 to 1"
 
+    # Search in caplog.text (all captured log output as a single string)
+    if phase_switch_log in caplog.text:
+        logging.info(f"Phase switching log verified: '{phase_switch_log}'")
+    else:
+        logging.error(f"Phase switching log NOT found: '{phase_switch_log}'")
+        assert False
+        
     logging.info(">>>>>>>>>> AC HLC ONE-PHASE TEST PASSED <<<<<<<<<<")
 
