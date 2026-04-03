@@ -204,6 +204,7 @@ async def test_hlc_ac_charging(everest_core: EverestCore):
         logging.info("EVerest core reports: ALL MODULES STARTED.")
 
     assert probe.test(90, Mode.HLC_AC)
+    assert probe._energy_wh_import > 0, "No energy was imported"
 
     logging.info(">>>>>>>>>> HLC ISO15118-2 AC TEST PASSED <<<<<<<<<<")
 
@@ -245,6 +246,7 @@ async def test_hlc_ac_charging_with_early_disconnect(everest_core: EverestCore):
     # Test should handle early disconnect gracefully
     # Verify transaction events are still properly recorded
     assert probe.test(60, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
 
     logging.info(">>>>>>>>>> AC HLC EARLY DISCONNECT TEST PASSED <<<<<<<<<<")
 
@@ -283,6 +285,11 @@ async def test_hlc_ac_charging_one_phase(everest_core: EverestCore):
         "unplug"
     )
     assert probe.test(120, Mode.HLC_AC, cmd_string)
+    logging.info("Check logs for '3ph/1ph: Switching #ph from 3 to 1'")
+
+    logging.info(f"Events received: {probe._all_events}")
+    assert '3ph/1ph: Switching #ph from 3 to 1' in probe._all_events
+    assert probe._energy_wh_import > 0, "No energy was imported"
 
     logging.info(">>>>>>>>>> AC HLC ONE-PHASE TEST PASSED <<<<<<<<<<")
 
