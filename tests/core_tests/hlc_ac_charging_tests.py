@@ -297,6 +297,54 @@ async def test_hlc_ac_charging_one_phase(everest_core: EverestCore, caplog):
     else:
         logging.error(f"Phase switching log NOT found: '{phase_switch_log}'")
         assert False
-        
+
     logging.info(">>>>>>>>>> AC HLC ONE-PHASE TEST PASSED <<<<<<<<<<")
 
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_with_pause_resume(everest_core: EverestCore):
+    """
+    Test pausing and resuming charging during AC-HLC session
+    """
+    logging.info(">>>>>>>>>> AC HLC PAUSE/RESUME TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 5;"
+        "iso_pause_charging;"
+        "sleep 3;"
+        "iso_resume_charging;"
+        "iso_wait_for_stop 15;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(90, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(f"Events received: {probe._all_events}")
+
+    assert 'ChargingPausedEV' in probe._all_events, "ChargingPausedEV event missing!"
+    assert 'ChargingResumed' in probe._all_events, "ChargingResumed event missing!"
+
+    logging.info(">>>>>>>>>> AC HLC PAUSE/RESUME TEST PASSED <<<<<<<<<<")
