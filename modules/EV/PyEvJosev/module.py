@@ -48,7 +48,9 @@ async def evcc_handler_main_loop(module_config: dict):
         ev_controller=SimEVController(evcc_config),
     ).start()
 
-    exi_codec.shutdown()
+    # Shutdown the Java gateway instead of calling shutdown on exi_codec
+    if hasattr(exi_codec, 'gateway'):
+        exi_codec.gateway.shutdown()
 
 class PyEVJosevModule():
     def __init__(self) -> None:
