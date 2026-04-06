@@ -28,6 +28,7 @@ from typing import Any, Callable
 import logging
 
 import pytest
+import time
 
 
 def pytest_addoption(parser):
@@ -194,6 +195,16 @@ def probe_module(
         "force_unlock",
         lambda arg: True,
     )
+    # ✅ Patch legacy command
+    try:
+        module.implement_command(
+            "ProbeModuleConnectorA",
+            "set_faulted",
+            lambda arg: None
+        )
+    except Exception:
+        pass
+
     implement_command(
         module,
         skip_implementation,
@@ -292,6 +303,16 @@ def probe_module(
         "force_unlock",
         lambda arg: True,
     )
+    # ✅ Patch legacy command
+    try:
+        module.implement_command(
+            "ProbeModuleConnectorB",
+            "set_faulted",
+            lambda arg: None
+        )
+    except Exception:
+        pass
+
     implement_command(
         module,
         skip_implementation,
@@ -464,7 +485,14 @@ def probe_module(
         lambda arg: {"status": "NotFound", "info": []},
     )
 
-    return module
+    # Clean teardown
+    yield module
+
+    time.sleep(0.2)
+    try:
+        module.stop()
+    except Exception:
+        pass
 
 
 @pytest.fixture()
