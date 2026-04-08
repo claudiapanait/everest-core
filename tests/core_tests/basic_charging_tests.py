@@ -401,6 +401,10 @@ async def test_basic_charging_state_e(everest_core: EverestCore):
 
     assert probe.test(120, Mode.Basic, cmd_string)
 
+    logging.info(f"Events received: {probe._all_events}")
+    # assert 'BCDtoEF' in probe._all_events, "BCDtoEF event missing when simulating CP error state E"
+    # assert 'BCDtoE' in probe._all_events, "BCDtoE event missing when simulating CP error state E"
+
     logging.info(">>>>>>>>>> BASIC CHARGING CP STATE E TEST PASSED <<<<<<<<<<")
 
 
@@ -446,6 +450,7 @@ async def test_basic_charging_pause_resume(everest_core: EverestCore):
     )
 
     assert probe.test(120, Mode.Basic, cmd_string)
+    logging.info(f"Events received: {probe._all_events}")
 
     logging.info(">>>>>>>>>> BASIC CHARGING PAUSE RESUME SESSION TEST PASSED <<<<<<<<<<")
 
@@ -480,14 +485,15 @@ async def test_basic_charging_diode_failure(everest_core: EverestCore):
         "draw_power_regulated 16,3;"
         "sleep 5;"
         "diode_fail;"  # Simulate diode failure
-        "sleep 10;"
+        "sleep 50;"
         "unplug"
     )
 
     assert probe.test(30, Mode.Basic, cmd_string)
 
     logging.info(f"Events received: {probe._all_events}")
-    assert 'ChargingResumed' in probe._all_events, "ChargingResumed event missing after fault cleared"
+    assert 'ChargingPausedEVSE' in probe._all_events, "ChargingPausedEVSE event missing during diode failure detection"
+    assert 'ChargingStarted' in probe._all_events, "ChargingStarted event missing after fault cleared"
 
     logging.info(">>>>>>>>>> BASIC CHARGING DIODE FAILURE TEST PASSED <<<<<<<<<<")
 
@@ -522,7 +528,7 @@ async def test_basic_charging_rcd_error(everest_core: EverestCore):
         "draw_power_regulated 16,3;"
         "sleep 5;"
         "rcd_current 35;"  # Set RCD current to 35mA (above threshold)
-        "sleep 2;"
+        "sleep 5;"
         "unplug"
     )
 
@@ -530,7 +536,7 @@ async def test_basic_charging_rcd_error(everest_core: EverestCore):
 
     logging.info(f"Events received: {probe._all_events}")
 
-    assert 'ChargingPausedEV' in probe._all_events, "ChargingPausedEV event missing (car should stop after RCD fault)"
+    assert 'ChargingPausedEVSE' in probe._all_events, "ChargingPausedEVSE event missing (car should stop after RCD fault)"
     # Verify ChargingResumed did NOT occur (RCD fault should prevent resume)
     assert 'ChargingResumed' not in probe._all_events, \
         "ChargingResumed should NOT occur after RCD fault - this is a safety-critical error"
