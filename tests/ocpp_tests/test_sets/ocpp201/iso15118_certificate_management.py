@@ -572,7 +572,7 @@ class TestIso15118CertificateManagementOcppIntegration:
 @pytest.mark.asyncio
 @pytest.mark.ocpp_version("ocpp2.0.1")
 @pytest.mark.everest_core_config("everest-config-ocpp201.yaml")
-@pytest.mark.source_certs_dir(Path(__file__).parent.parent / "everest-aux/certs")
+@pytest.mark.source_certs_dir(Path(__file__).parent.parent / "everest-aux/certs/iso2")
 @pytest.mark.use_temporary_persistent_store
 class TestIso15118CertificateManagementE2E:
     """
@@ -698,8 +698,8 @@ class TestIso15118CertificateManagementE2E:
 
         # Prerequisite of  TC_M_19_CS-Retrieve : "The Charging Station does not have a MORootCertificate installed."
 
-        for f in list((tmp_path / "certs/ca/mo").glob("*.pem")) + list(
-            (tmp_path / "certs/ca/mo").glob("*.der")
+        for f in list((tmp_path / "certs/iso2/ca/mo").glob("*.pem")) + list(
+            (tmp_path / "certs/iso2/ca/mo").glob("*.der")
         ):
             f.unlink()
 
@@ -749,8 +749,8 @@ class TestIso15118CertificateManagementE2E:
 
         This means that we expect one entry for each v2g leaf cert, with the sub-CAs added as child certificates
         The v2g root should not be included in the chain.
-        The leaf cert is available at certs/client/cso/SECC_LEAF.pem
-        the sub-CA certs are available at certs/ca/cso/CPO_SUB_CA{1,2}.pem
+        The leaf cert is available at certs/iso2/client/cso/SECC_LEAF.pem
+        the sub-CA certs are available at certs/iso2/ca/cso/CPO_SUB_CA{1,2}.pem
         """
 
         # Prepare: Expected hash data
