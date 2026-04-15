@@ -698,8 +698,8 @@ class TestIso15118CertificateManagementE2E:
 
         # Prerequisite of  TC_M_19_CS-Retrieve : "The Charging Station does not have a MORootCertificate installed."
 
-        for f in list((tmp_path / "certs/iso2/ca/mo").glob("*.pem")) + list(
-            (tmp_path / "certs/iso2/ca/mo").glob("*.der")
+        for f in list((tmp_path / "certs/ca/mo").glob("*.pem")) + list(
+            (tmp_path / "certs/ca/mo").glob("*.der")
         ):
             f.unlink()
 
