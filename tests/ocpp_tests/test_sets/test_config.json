@@ -15,13 +15,13 @@
         "invalid_parent_id_tag": "RFID_PARENT_INVALID"
     },
     "certificate_info": {
-        "csms_root_ca": "everest-aux/certs/ca/csms/CSMS_ROOT_CA.pem",
-        "csms_root_ca_key": "everest-aux/certs/ca/csms/CSMS_ROOT_CA.key",
-        "csms_root_ca_invalid": "everest-aux/certs/CSMS_RootCA_RSA_invalid.pem",
-        "csms_cert": "everest-aux/certs/CSMS_SERVER.pem",
-        "csms_key": "everest-aux/certs/CSMS_SERVER.key",
+        "csms_root_ca": "everest-aux/certs/iso2/ca/csms/CSMS_ROOT_CA.pem",
+        "csms_root_ca_key": "everest-aux/certs/iso2/ca/csms/CSMS_ROOT_CA.key",
+        "csms_root_ca_invalid": "everest-aux/certs/iso2/CSMS_RootCA_RSA_invalid.pem",
+        "csms_cert": "everest-aux/certs/iso2/CSMS_SERVER.pem",
+        "csms_key": "everest-aux/certs/iso2/CSMS_SERVER.key",
         "csms_passphrase": "123456",
-        "mf_root_ca": "everest-aux/certs/ca/mf/MF_ROOT_CA.pem"
+        "mf_root_ca": "everest-aux/certs/iso2/ca/mf/MF_ROOT_CA.pem"
     },
     "firmware_info": {
         "update_file": "everest-aux/firmware/firmware_update.pnx",
