@@ -232,7 +232,7 @@ class EXIGenerator:
 
 
 def certificate_signed_response(csr: crypto.X509Req):
-    certs_path: str = Path(__file__).parent.resolve() / "everest-aux/certs/"
+    certs_path: str = Path(__file__).parent.resolve() / "everest-aux/certs/iso2"
     ca_cert_file = certs_path / "ca/v2g/V2G_ROOT_CA.pem"
     ca_key_file = certs_path / "client/v2g/V2G_ROOT_CA.key"
 
@@ -296,7 +296,7 @@ def on_data_transfer(accept_pnc_authorize, **kwargs):
             )
         elif req.message_id == "Get15118EVCertificate":
             certs_path: str = Path(
-                __file__).parent.resolve() / "everest-aux/certs/"
+                __file__).parent.resolve() / "everest-aux/certs/iso2"
             generator: EXIGenerator = EXIGenerator(certs_path)
             exi_request = json.loads(kwargs["data"])["exiRequest"]
             namespace = json.loads(kwargs["data"])["iso15118SchemaVersion"]
@@ -376,7 +376,7 @@ def on_data_transfer_reject_authorize(**kwargs):
 
 @on(Action201.get_15118_ev_certificate)
 def on_get_15118_ev_certificate(**kwargs):
-    certs_path: str = Path(__file__).parent.resolve() / "everest-aux/certs/"
+    certs_path: str = Path(__file__).parent.resolve() / "everest-aux/certs/iso2"
     generator: EXIGenerator = EXIGenerator(certs_path)
     payload = call201.Get15118EVCertificate(**kwargs)
 
