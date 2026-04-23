@@ -13,10 +13,10 @@ class EvseSecurityModuleConfiguration:
     mf_ca_bundle: Optional[str] = None
     mo_ca_bundle: Optional[str] = None
     v2g_ca_bundle: Optional[str] = None
-    csms_leaf_cert_directory: Optional[str] = None
-    csms_leaf_key_directory: Optional[str] = None
-    secc_leaf_cert_directory: Optional[str] = None
-    secc_leaf_key_directory: Optional[str] = None
+    csms_leaf_cert_directory: Optional[str] = "/etc/everest/certs/iso2/client/csms"
+    csms_leaf_key_directory: Optional[str] = "/etc/everest/certs/iso2/client/csms"
+    secc_leaf_cert_directory: Optional[str] = "/etc/everest/certs/iso2/client/cso"
+    secc_leaf_key_directory: Optional[str] = "/etc/everest/certs/iso2/client/cso"
     private_key_password: Optional[str] = None
 
 
