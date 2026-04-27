@@ -11,6 +11,16 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
+    # Register custom markers to avoid warnings
+    config.addinivalue_line(
+        "markers", "probe_module(connections): Configure probe module connections for testing"
+    )
+    config.addinivalue_line(
+        "markers", "everest_core_config(config_file): Specify EVerest core configuration file"
+    )
+    config.addinivalue_line(
+        "markers", "everest_config_adaptions(*strategies): Apply configuration adjustment strategies"
+    )
     everest_prefix = config.getoption('--everest-prefix')
     everest_config_path = Path(everest_prefix) / 'etc/everest'
     if not everest_config_path.exists():
