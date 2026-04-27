@@ -3,7 +3,7 @@
 
 from pathlib import Path
 import pytest
-
+from everest.testing.core_utils.fixtures import *
 
 def pytest_addoption(parser):
     parser.addoption("--everest-prefix", action="store", default="../build/dist",
@@ -27,6 +27,7 @@ def pytest_configure(config):
             continue
         pytest.everest_configs['params'].append(config_path)
         pytest.everest_configs['ids'].append(config_id)
+
 
 @pytest.fixture
 def started_test_controller(test_controller):
