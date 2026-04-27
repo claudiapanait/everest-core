@@ -12,7 +12,7 @@ from typing import Dict
 from everest.testing.core_utils.common import Requirement
 from everest.testing.core_utils.fixtures import *
 from everest.testing.core_utils.controller.everest_test_controller import (
-    EverestEverestTestController,
+    EverestTestController,
 )
 from everest.testing.core_utils.everest_core import EverestCore
 from everest.testing.core_utils.probe_module import ProbeModule
