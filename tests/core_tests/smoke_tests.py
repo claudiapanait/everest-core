@@ -194,7 +194,7 @@ async def wait_for_error(mock, timeout=5):
 
 
 async def setup_probe_module(
-    test_controller: EverestEverestTestController, everest_core: EverestCore
+    test_controller: EverestTestController, everest_core: EverestCore
 ):
     """Initialize test controller and probe module, wait for ready. Returns probe_module."""
     test_controller.start()
@@ -211,7 +211,7 @@ async def setup_probe_module(
 
 
 async def setup_session_mocks(
-    test_controller: EverestEverestTestController,
+    test_controller: EverestTestController,
     everest_core: EverestCore,
     connection_id: str = "evse_manager",
 ):
