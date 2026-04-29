@@ -529,6 +529,16 @@ async def test_iso15118_dc_session(
     # await run_basic_session(test_controller, session_event_mock, powermeter_mock, "plug_in_dc_iso")
     # Increase timeout for DC sessions as cable check can take longer
     test_controller.plug_in_dc_iso()
+    
+    # Debug: wait a bit and print what events we got
+    await asyncio.sleep(30)
+    events = []
+    for call in session_event_mock.call_args_list:
+        event_data = call[0][0]
+        event_type = event_data.get("event")
+        events.append(event_type)
+    print(f"DEBUG: Events received so far: {events}")
+
     await wait_for_session_events(session_event_mock, BASIC_SESSION_START_SEQUENCE, timeout=60)
     await assert_energy_exceeds(powermeter_mock, energy_threshold_wh=5, timeout=60)
     await end_session(test_controller, session_event_mock)
