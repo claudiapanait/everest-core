@@ -526,7 +526,12 @@ async def test_iso15118_dc_session(
         test_controller, everest_core
     )
     
-    await run_basic_session(test_controller, session_event_mock, powermeter_mock, "plug_in_dc_iso")
+    # await run_basic_session(test_controller, session_event_mock, powermeter_mock, "plug_in_dc_iso")
+    # Increase timeout for DC sessions as cable check can take longer
+    test_controller.plug_in_dc_iso()
+    await wait_for_session_events(session_event_mock, BASIC_SESSION_START_SEQUENCE, timeout=60)
+    await assert_energy_exceeds(powermeter_mock, energy_threshold_wh=5, timeout=60)
+    await end_session(test_controller, session_event_mock)
 
 @pytest.mark.asyncio
 @pytest.mark.probe_module(
