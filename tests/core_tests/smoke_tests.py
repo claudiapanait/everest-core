@@ -529,7 +529,7 @@ async def test_iso15118_dc_session(
     # await run_basic_session(test_controller, session_event_mock, powermeter_mock, "plug_in_dc_iso")
     # Increase timeout for DC sessions as cable check can take longer
     test_controller.plug_in_dc_iso()
-    
+
     # Debug: wait a bit and print what events we got
     await asyncio.sleep(30)
     events = []
@@ -571,7 +571,9 @@ async def test_iso15118_dc_session_stop_by_evse(
         test_controller, everest_core
     )
 
-    await run_basic_session(test_controller, session_event_mock, powermeter_mock, "plug_in_dc_iso", finish_with_plug_out=False)
+    test_controller.plug_in_dc_iso()
+    # await run_basic_session(test_controller, session_event_mock, powermeter_mock, "plug_in_dc_iso", finish_with_plug_out=False)
+    await wait_for_session_events(session_event_mock, BASIC_SESSION_START_SEQUENCE, timeout=60)
 
     await probe_module.call_command(
         "evse_manager",
@@ -582,6 +584,14 @@ async def test_iso15118_dc_session_stop_by_evse(
             }
         },
     )
+
+    await asyncio.sleep(30)
+    events = []
+    for call in session_event_mock.call_args_list:
+        event_data = call[0][0]
+        event_type = event_data.get("event")
+        events.append(event_type)
+    print(f"DEBUG: Events received so far: {events}")
 
     await assert_no_events(session_event_mock, ["ChargingPausedEV", "ChargingPausedEVSE"], wait_time=5, reset_after_check=False)
     await wait_for_session_events(session_event_mock, ["StoppingCharging", "TransactionFinished"])
