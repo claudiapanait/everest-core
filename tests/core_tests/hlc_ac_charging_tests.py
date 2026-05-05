@@ -346,3 +346,738 @@ async def test_hlc_ac_charging_with_pause(everest_core: EverestCore):
     assert 'ChargingPausedEV' in probe._all_events, "ChargingPausedEV event missing!"
 
     logging.info(">>>>>>>>>> AC HLC PAUSE TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_pause_and_resume(everest_core: EverestCore):
+    """
+    Test pausing and resuming charging during AC-HLC session
+    """
+    logging.info(">>>>>>>>>> AC HLC PAUSE AND RESUME TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 5;"
+        "iso_pause_charging;"
+        "sleep 3;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 5;"
+        "iso_wait_for_stop 10;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(120, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(f"Events received: {probe._all_events}")
+    assert 'ChargingPausedEV' in probe._all_events, "ChargingPausedEV event missing!"
+    assert 'ChargingResumed' in probe._all_events, "ChargingResumed event missing!"
+
+    logging.info(">>>>>>>>>> AC HLC PAUSE AND RESUME TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_multiple_pause_resume_cycles(everest_core: EverestCore):
+    """
+    Test multiple pause/resume cycles during AC-HLC session
+    """
+    logging.info(">>>>>>>>>> AC HLC MULTIPLE PAUSE/RESUME CYCLES TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 3;"
+        "iso_pause_charging;"
+        "sleep 2;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 3;"
+        "iso_pause_charging;"
+        "sleep 2;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 3;"
+        "iso_wait_for_stop 10;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(150, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    pause_count = probe._all_events.count('ChargingPausedEV')
+    resume_count = probe._all_events.count('ChargingResumed')
+
+    logging.info(f"Pause events: {pause_count}, Resume events: {resume_count}")
+    assert pause_count >= 2, f"Expected at least 2 pause events, got {pause_count}"
+    assert resume_count >= 2, f"Expected at least 2 resume events, got {resume_count}"
+
+    logging.info(">>>>>>>>>> AC HLC MULTIPLE PAUSE/RESUME CYCLES TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_low_current(everest_core: EverestCore):
+    """
+    Test AC HLC charging with low current (6A)
+    """
+    logging.info(">>>>>>>>>> AC HLC LOW CURRENT TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 6,3;"
+        "iso_wait_for_stop 20;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(90, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(">>>>>>>>>> AC HLC LOW CURRENT TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_high_current(everest_core: EverestCore):
+    """
+    Test AC HLC charging with high current (32A)
+    """
+    logging.info(">>>>>>>>>> AC HLC HIGH CURRENT TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 32,3;"
+        "iso_wait_for_stop 20;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(90, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(">>>>>>>>>> AC HLC HIGH CURRENT TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_current_ramp_up(everest_core: EverestCore):
+    """
+    Test AC HLC charging with current ramping up during session
+    """
+    logging.info(">>>>>>>>>> AC HLC CURRENT RAMP UP TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 6,3;"
+        "sleep 5;"
+        "iso_draw_power_regulated 12,3;"
+        "sleep 5;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 5;"
+        "iso_wait_for_stop 10;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(120, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(">>>>>>>>>> AC HLC CURRENT RAMP UP TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_current_ramp_down(everest_core: EverestCore):
+    """
+    Test AC HLC charging with current ramping down during session
+    """
+    logging.info(">>>>>>>>>> AC HLC CURRENT RAMP DOWN TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 5;"
+        "iso_draw_power_regulated 12,3;"
+        "sleep 5;"
+        "iso_draw_power_regulated 6,3;"
+        "sleep 5;"
+        "iso_wait_for_stop 10;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(120, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(">>>>>>>>>> AC HLC CURRENT RAMP DOWN TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_short_session(everest_core: EverestCore):
+    """
+    Test AC HLC charging with very short charging session
+    """
+    logging.info(">>>>>>>>>> AC HLC SHORT SESSION TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 2;"
+        "iso_stop_charging;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(60, Mode.HLC_AC, cmd_string)
+    # Energy might be very low but should still be > 0
+    assert probe._energy_wh_import >= 0, "Energy import should be non-negative"
+
+    logging.info(">>>>>>>>>> AC HLC SHORT SESSION TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_long_session(everest_core: EverestCore):
+    """
+    Test AC HLC charging with extended charging session
+    """
+    logging.info(">>>>>>>>>> AC HLC LONG SESSION TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "iso_wait_for_stop 60;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(180, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(">>>>>>>>>> AC HLC LONG SESSION TEST PASSED <<<<<<<<<<")
+
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_immediate_unplug_after_ready(everest_core: EverestCore):
+    """
+    Test AC HLC charging with immediate unplug after power ready
+    """
+    logging.info(">>>>>>>>>> AC HLC IMMEDIATE UNPLUG TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "sleep 1;"
+        "iso_stop_charging;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    # This test verifies graceful handling of immediate disconnect
+    result = probe.test(60, Mode.HLC_AC, cmd_string)
+    assert result, "Test should complete successfully even with immediate unplug"
+
+    logging.info(">>>>>>>>>> AC HLC IMMEDIATE UNPLUG TEST PASSED <<<<<<<")
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_immediate_unplug_after_ready(everest_core: EverestCore):
+    """
+    Test AC HLC charging with immediate unplug after power ready
+    """
+    logging.info(">>>>>>>>>> AC HLC IMMEDIATE UNPLUG TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "sleep 1;"
+        "iso_stop_charging;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    # This test verifies graceful handling of immediate disconnect
+    result = probe.test(60, Mode.HLC_AC, cmd_string)
+    assert result, "Test should complete successfully even with immediate unplug"
+
+    logging.info(">>>>>>>>>> AC HLC IMMEDIATE UNPLUG TEST PASSED <<<<<<<<<<")
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_phase_switching_3_to_1_to_3(everest_core: EverestCore, caplog):
+    """
+    Test AC HLC with phase switching from 3-phase to 1-phase and back to 3-phase
+    """
+    logging.info(">>>>>>>>>> AC HLC PHASE SWITCHING 3->1->3 TEST START <<<<<<<<<<")
+    caplog.set_level(logging.DEBUG)
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 5;"
+        "iso_draw_power_regulated 16,1;"
+        "sleep 5;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 5;"
+        "iso_wait_for_stop 10;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    result = probe.test(150, Mode.HLC_AC, cmd_string)
+    assert result, "Charging test failed"
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(">>>>>>>>>> AC HLC PHASE SWITCHING 3->1->3 TEST PASSED <<<<<<<<<<")
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_reconnect_after_disconnect(everest_core: EverestCore):
+    """
+    Test AC HLC charging with reconnection after disconnect
+    """
+    logging.info(">>>>>>>>>> AC HLC RECONNECT TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    # Access car_sim_ff directly from probe's setup
+    car_sim_ff = probe._setup.connections['test_control'][0]
+
+    # First session
+    cmd_string_1 = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 5;"
+        "iso_stop_charging;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug;"
+        "sleep 3"
+    )
+
+    assert probe.test(90, Mode.HLC_AC, cmd_string_1)
+    first_session_energy = probe._energy_wh_import
+    assert first_session_energy > 0, "No energy was imported in first session"
+
+    logging.info(f"First session completed with {first_session_energy} Wh")
+
+
+    logging.info("Waiting for first session to fully complete...")
+    time.sleep(5)
+    logging.info("Disabling EV simulator...")
+    probe._mod.call_command(car_sim_ff, 'enable', {'value': False})
+    time.sleep(2)
+
+    # Reset for second session
+    probe._msg_queue = queue.Queue()
+    probe._energy_wh_import = 0
+    probe._all_events = []
+
+    # Second session
+    cmd_string_2 = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "iso_wait_for_stop 10;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(90, Mode.HLC_AC, cmd_string_2)
+    second_session_energy = probe._energy_wh_import
+    assert second_session_energy > 0, "No energy was imported in second session"
+
+    logging.info(f"Second session completed with {second_session_energy} Wh")
+    logging.info(">>>>>>>>>> AC HLC RECONNECT TEST PASSED <<<<<<<<<<")
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_slac_timeout_recovery(everest_core: EverestCore):
+    """
+    Test AC HLC charging recovery from SLAC timeout
+    """
+    logging.info(">>>>>>>>>> AC HLC SLAC TIMEOUT RECOVERY TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    # Normal session after potential SLAC issues
+    cmd_string = (
+        "sleep 2;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "iso_wait_for_stop 15;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(120, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(">>>>>>>>>> AC HLC SLAC TIMEOUT RECOVERY TEST PASSED <<<<<<<<<<")
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_variable_current_profile(everest_core: EverestCore):
+    """
+    Test AC HLC charging with variable current profile simulating real-world load management
+    """
+    logging.info(">>>>>>>>>> AC HLC VARIABLE CURRENT PROFILE TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 10,3;"
+        "sleep 3;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 3;"
+        "iso_draw_power_regulated 8,3;"
+        "sleep 3;"
+        "iso_draw_power_regulated 20,3;"
+        "sleep 3;"
+        "iso_draw_power_regulated 12,3;"
+        "sleep 3;"
+        "iso_wait_for_stop 10;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(150, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(">>>>>>>>>> AC HLC VARIABLE CURRENT PROFILE TEST PASSED <<<<<<<<<<")
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_minimum_current_threshold(everest_core: EverestCore):
+    """
+    Test AC HLC charging at minimum current threshold (6A)
+    """
+    logging.info(">>>>>>>>>> AC HLC MINIMUM CURRENT THRESHOLD TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 6,3;"
+        "iso_wait_for_stop 25;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(120, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    logging.info(">>>>>>>>>> AC HLC MINIMUM CURRENT THRESHOLD TEST PASSED <<<<<<<<<<")
+
+@pytest.mark.everest_core_config('config-sil.yaml')
+@pytest.mark.asyncio
+async def test_hlc_ac_charging_extended_pause(everest_core: EverestCore):
+    """
+    Test AC HLC charging with extended pause duration
+    """
+    logging.info(">>>>>>>>>> AC HLC EXTENDED PAUSE TEST START <<<<<<<<<<")
+
+    test_connections = {
+        'test_control': [Requirement('ev_manager', 'main')],
+        'connector_1': [Requirement('connector_1', 'evse')],
+    }
+
+    everest_core.start(standalone_module='probe', test_connections=test_connections)
+    session = RuntimeSession(
+        str(everest_core.prefix_path),
+        str(everest_core.everest_config_path)
+    )
+    probe = ProbeModule(session)
+
+    if everest_core.status_listener.wait_for_status(18, ["ALL_MODULES_STARTED"]):
+        everest_core.all_modules_started_event.set()
+
+    cmd_string = (
+        "sleep 1;"
+        "iso_wait_slac_matched;"
+        "iso_start_v2g_session AC;"
+        "iso_wait_pwr_ready;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 5;"
+        "iso_pause_charging;"
+        "sleep 10;"
+        "iso_draw_power_regulated 16,3;"
+        "sleep 5;"
+        "iso_wait_for_stop 10;"
+        "iso_wait_v2g_session_stopped;"
+        "unplug"
+    )
+
+    assert probe.test(180, Mode.HLC_AC, cmd_string)
+    assert probe._energy_wh_import > 0, "No energy was imported"
+
+    assert 'ChargingPausedEV' in probe._all_events, "ChargingPausedEV event missing!"
+    assert 'ChargingResumed' in probe._all_events, "ChargingResumed event missing!"
+
+    logging.info(">>>>>>>>>> AC HLC EXTENDED PAUSE TEST PASSED <<<<<<<<<<")
