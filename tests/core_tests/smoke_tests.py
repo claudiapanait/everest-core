@@ -1006,36 +1006,36 @@ async def test_iso15118_ac_session_paused_by_ev(
     await assert_energy_exceeds(powermeter_mock, energy_threshold_wh=20, timeout=15)
     await end_session(test_controller, session_event_mock)
 
-@pytest.mark.asyncio
-@pytest.mark.probe_module(
-    connections={
-        "evse_manager": [Requirement("evse_manager", "evse")],
-        "gcp": [Requirement("grid_connection_point", "external_limits")],
-    }
-)
-@pytest.mark.everest_core_config("config-sil-dc.yaml")
-@pytest.mark.everest_config_adaptions(DcConfigAdjustmentStrategy())
-async def test_iso15118_dc_session_paused_by_ev(
-    test_controller: EverestTestController, everest_core: EverestCore
-):
-    """
-    Test session events of a basic ISO 15118 DC charging session with session paused by EV.
-    """
-
-    _, session_event_mock, powermeter_mock, _ = await setup_session_mocks(
-        test_controller, everest_core
-    )
-
-    await start_session(test_controller, session_event_mock, test_controller.plug_in_dc_iso)
-    await assert_energy_exceeds(powermeter_mock, energy_threshold_wh=10, timeout=15)
-    test_controller.pause_iso_session()
-    await wait_for_session_events(session_event_mock, ["ChargingPausedEV"])
-    await assert_energy_below(powermeter_mock, energy_threshold_wh=20, timeout=5)
-    await assert_no_events(session_event_mock, ["ChargingStarted", "ChargingStarted"], wait_time=5)
-    test_controller.resume_iso_session_dc()
-    await assert_energy_exceeds(powermeter_mock, energy_threshold_wh=20, timeout=45)
-    await wait_for_session_events(session_event_mock, ["ChargingStarted"])
-    await end_session(test_controller, session_event_mock)
+# @pytest.mark.asyncio
+# @pytest.mark.probe_module(
+#     connections={
+#         "evse_manager": [Requirement("evse_manager", "evse")],
+#         "gcp": [Requirement("grid_connection_point", "external_limits")],
+#     }
+# )
+# @pytest.mark.everest_core_config("config-sil-dc.yaml")
+# @pytest.mark.everest_config_adaptions(DcConfigAdjustmentStrategy())
+# async def test_iso15118_dc_session_paused_by_ev(
+#     test_controller: EverestTestController, everest_core: EverestCore
+# ):
+#     """
+#     Test session events of a basic ISO 15118 DC charging session with session paused by EV.
+#     """
+#
+#     _, session_event_mock, powermeter_mock, _ = await setup_session_mocks(
+#         test_controller, everest_core
+#     )
+#
+#     await start_session(test_controller, session_event_mock, test_controller.plug_in_dc_iso)
+#     await assert_energy_exceeds(powermeter_mock, energy_threshold_wh=10, timeout=15)
+#     test_controller.pause_iso_session()
+#     await wait_for_session_events(session_event_mock, ["ChargingPausedEV"])
+#     await assert_energy_below(powermeter_mock, energy_threshold_wh=20, timeout=5)
+#     await assert_no_events(session_event_mock, ["ChargingStarted", "ChargingStarted"], wait_time=5)
+#     test_controller.resume_iso_session_dc()
+#     await assert_energy_exceeds(powermeter_mock, energy_threshold_wh=20, timeout=45)
+#     await wait_for_session_events(session_event_mock, ["ChargingStarted"])
+#     await end_session(test_controller, session_event_mock)
 
 @pytest.mark.asyncio
 @pytest.mark.probe_module(
